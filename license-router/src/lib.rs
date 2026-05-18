@@ -26,3 +26,5 @@ impl LicenseRouter {
         1
     }
 }
+
+// improvement #7
