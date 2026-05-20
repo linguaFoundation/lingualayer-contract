@@ -26,3 +26,5 @@ impl RoyaltySplitter {
         1
     }
 }
+
+// improvement #8
