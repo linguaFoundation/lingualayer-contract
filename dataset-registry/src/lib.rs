@@ -30,3 +30,5 @@ impl DatasetRegistry {
 // improvement #15
 
 // improvement #21
+
+// improvement #24
