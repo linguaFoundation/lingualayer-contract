@@ -27,3 +27,5 @@ testutils = ["soroban-sdk/testutils"]
 // improvement #25
 
 // improvement #27
+
+// improvement #33
