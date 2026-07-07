@@ -1,8 +1,10 @@
 {
   "network": "testnet",
-  "dataset_registry": "CXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-  "license_router": "CXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-  "royalty_splitter": "CXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-  "deployed_by": "opaeg17@gmail.com",
-  "note": "Deploy with: stellar contract deploy --wasm target/wasm32-unknown-unknown/release/<contract>.wasm --network testnet"
+  "dataset_registry": "CDATASETXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "license_router": "CLICENSEXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "royalty_splitter": "CROYALTYXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "quality_oracle": "CQUALITYXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "data_commission": "CCOMMISSXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "deployed_by": "okececilia1962@gmail.com",
+  "note": "Deploy: stellar contract deploy --wasm target/wasm32-unknown-unknown/release/<name>.wasm --network testnet"
 }

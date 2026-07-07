@@ -3,4 +3,6 @@ members = [
     "dataset-registry",
     "license-router",
     "royalty-splitter",
+    "quality-oracle",
+    "data-commission",
 ]
