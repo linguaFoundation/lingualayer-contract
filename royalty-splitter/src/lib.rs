@@ -32,3 +32,5 @@ impl RoyaltySplitter {
 // improvement #29
 
 // improvement #32
+
+// improvement #35
