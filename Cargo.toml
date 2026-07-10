@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "dataset-registry",
+    "license-router",
+    "royalty-splitter",
+]
