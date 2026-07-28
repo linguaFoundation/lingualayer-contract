@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 members = [
     "dataset-registry",
     "license-router",
@@ -6,3 +7,6 @@ members = [
     "quality-oracle",
     "data-commission",
 ]
+
+[workspace.dependencies]
+soroban-sdk = "21.0.0"

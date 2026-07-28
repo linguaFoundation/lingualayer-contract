@@ -16,14 +16,14 @@ soroban-sdk = { workspace = true, features = ["testutils"] }
 [features]
 testutils = ["soroban-sdk/testutils"]
 
-// improvement #12
+# improvement #12
 
-// improvement #16
+# improvement #16
 
-// improvement #17
+# improvement #17
 
-// improvement #20
+# improvement #20
 
-// improvement #22
+# improvement #22
 
-// improvement #28
+# improvement #28

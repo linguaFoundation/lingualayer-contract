@@ -1,4 +1,6 @@
 #![no_std]
+extern crate alloc;
+use alloc::format;
 use soroban_sdk::{
     contract, contractimpl, contracttype, symbol_short,
     Address, Env, String, Vec,
@@ -59,7 +61,7 @@ impl QualityOracle {
     /// Register a curator by staking XLM. Stakers can be slashed for bad scores.
     pub fn register_curator(env: Env, curator: Address) {
         curator.require_auth();
-        let key = String::from_str(&env, &format!("cur_{}", curator));
+        let key = String::from_str(&env, &format!("cur_{:?}", curator));
         if env.storage().persistent().has(&key) {
             panic!("curator already registered");
         }
@@ -86,7 +88,7 @@ impl QualityOracle {
         curator.require_auth();
 
         // Validate curator is registered
-        let cur_key = String::from_str(&env, &format!("cur_{}", curator));
+        let cur_key = String::from_str(&env, &format!("cur_{:?}", curator));
         if !env.storage().persistent().has(&cur_key) {
             panic!("curator not registered");
         }
@@ -102,12 +104,12 @@ impl QualityOracle {
             rubric_hash,
             ledger: env.ledger().sequence(),
         };
-        let attest_key = String::from_str(&env, &format!("att_{}_{}", dataset_id, curator));
+        let attest_key = String::from_str(&env, &format!("att_{:?}_{:?}", dataset_id, curator));
         env.storage().persistent().set(&attest_key, &attest);
         env.storage().persistent().extend_ttl(&attest_key, 7_776_000, 7_776_000);
 
         // Update aggregate score
-        let agg_key = String::from_str(&env, &format!("agg_{}", dataset_id));
+        let agg_key = String::from_str(&env, &format!("agg_{:?}", dataset_id));
         let mut quality: DatasetQuality = env.storage().persistent()
             .get(&agg_key)
             .unwrap_or(DatasetQuality {
@@ -136,7 +138,7 @@ impl QualityOracle {
 
     /// Get aggregate quality for a dataset.
     pub fn get_quality(env: Env, dataset_id: String) -> DatasetQuality {
-        let agg_key = String::from_str(&env, &format!("agg_{}", dataset_id));
+        let agg_key = String::from_str(&env, &format!("agg_{:?}", dataset_id));
         env.storage().persistent()
             .get(&agg_key)
             .expect("no quality data for dataset")
@@ -145,7 +147,7 @@ impl QualityOracle {
     /// Compute royalty multiplier (bps) based on quality tier.
     /// Platinum = 150% (1.5x), Gold = 125%, Silver = 100%, Bronze = 75%
     pub fn royalty_multiplier_bps(env: Env, dataset_id: String) -> u32 {
-        let agg_key = String::from_str(&env, &format!("agg_{}", dataset_id));
+        let agg_key = String::from_str(&env, &format!("agg_{:?}", dataset_id));
         match env.storage().persistent().get::<String, DatasetQuality>(&agg_key) {
             Some(q) => match q.tier {
                 QualityTier::Platinum => 15000,

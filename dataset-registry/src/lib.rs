@@ -1,4 +1,6 @@
 #![no_std]
+extern crate alloc;
+use alloc::format;
 use soroban_sdk::{
     contract, contractimpl, contracttype, symbol_short,
     Address, Env, String, Vec,
@@ -71,6 +73,10 @@ impl DatasetRegistry {
     ) -> String {
         owner.require_auth();
 
+        if metadata_hash == soroban_sdk::BytesN::from_array(&env, &[0u8; 32]) {
+            panic!("metadata hash cannot be zero");
+        }
+
         let total: u32 = contributors.iter().map(|c| c.share_bps).sum();
         if total != 10000 { panic!("contributor shares must sum to 10000 bps"); }
 
@@ -108,7 +114,7 @@ impl DatasetRegistry {
     }
 
     fn increment_reputation(env: &Env, address: &Address) {
-        let rep_key = String::from_str(env, &format!("rep_{}", address));
+        let rep_key = String::from_str(env, &format!("rep_{:?}", address));
         let mut rep: ContributorReputation = env.storage().persistent()
             .get(&rep_key)
             .unwrap_or(ContributorReputation {
@@ -125,7 +131,7 @@ impl DatasetRegistry {
     }
 
     pub fn get_reputation(env: Env, address: Address) -> ContributorReputation {
-        let rep_key = String::from_str(&env, &format!("rep_{}", address));
+        let rep_key = String::from_str(&env, &format!("rep_{:?}", address));
         env.storage().persistent()
             .get(&rep_key)
             .expect("no reputation data")
@@ -143,6 +149,9 @@ impl DatasetRegistry {
         let mut ds: Dataset = env.storage().persistent()
             .get(&dataset_id).expect("dataset not found");
         ds.owner.require_auth();
+        if new_hash == soroban_sdk::BytesN::from_array(&env, &[0u8; 32]) {
+            panic!("metadata hash cannot be zero");
+        }
         ds.metadata_hash = new_hash;
         ds.version += 1;
         env.storage().persistent().set(&dataset_id, &ds);
@@ -155,10 +164,13 @@ impl DatasetRegistry {
         ds.state = DatasetState::Deprecated;
         env.storage().persistent().set(&dataset_id, &ds);
         env.events().publish(
-            (symbol_short!("dataset"), symbol_short!("deprecated")),
+            (symbol_short!("dataset"), symbol_short!("deprecate")),
             dataset_id,
         );
     }
 
     pub fn version(_env: Env) -> u32 { 3 }
 }
+
+#[cfg(test)]
+mod test;

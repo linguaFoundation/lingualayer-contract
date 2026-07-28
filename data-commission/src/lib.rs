@@ -1,4 +1,6 @@
 #![no_std]
+extern crate alloc;
+use alloc::format;
 use soroban_sdk::{
     contract, contractimpl, contracttype, symbol_short, token,
     Address, Env, String,
@@ -59,6 +61,10 @@ impl DataCommission {
         deadline_ledger: u32,
     ) -> String {
         commissioner.require_auth();
+
+        if description_hash == soroban_sdk::BytesN::from_array(&env, &[0u8; 32]) {
+            panic!("metadata hash cannot be zero");
+        }
 
         if bounty_amount <= 0 { panic!("bounty must be positive"); }
         if deadline_ledger <= env.ledger().sequence() {
@@ -177,3 +183,6 @@ impl DataCommission {
 
     pub fn version(_env: Env) -> u32 { 1 }
 }
+
+#[cfg(test)]
+mod test;
