@@ -144,6 +144,17 @@ impl QualityOracle {
             .expect("no quality data for dataset")
     }
 
+    /// Extend a dataset's quality-aggregate TTL. Permissionless — anyone
+    /// may call this to keep a dataset's quality record (and the royalty
+    /// tier it feeds into) from expiring off persistent storage.
+    pub fn renew_quality_ttl(env: Env, dataset_id: String) {
+        let agg_key = String::from_str(&env, &format!("agg_{:?}", dataset_id));
+        if !env.storage().persistent().has(&agg_key) {
+            panic!("no quality data for dataset");
+        }
+        env.storage().persistent().extend_ttl(&agg_key, 7_776_000, 7_776_000);
+    }
+
     /// Compute royalty multiplier (bps) based on quality tier.
     /// Platinum = 150% (1.5x), Gold = 125%, Silver = 100%, Bronze = 75%
     pub fn royalty_multiplier_bps(env: Env, dataset_id: String) -> u32 {

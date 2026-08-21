@@ -177,6 +177,17 @@ impl DataCommission {
             .expect("commission not found")
     }
 
+    /// Extend a commission's storage TTL. Permissionless — anyone may call
+    /// this to keep a commission they care about from expiring off
+    /// persistent storage; extending an entry's lifetime can't be abused
+    /// the way mutating it could, so there's no auth requirement.
+    pub fn renew_commission_ttl(env: Env, commission_id: String) {
+        if !env.storage().persistent().has(&commission_id) {
+            panic!("commission not found");
+        }
+        env.storage().persistent().extend_ttl(&commission_id, 7_776_000, 7_776_000);
+    }
+
     pub fn commission_count(env: Env) -> u32 {
         env.storage().instance().get(&symbol_short!("com_cnt")).unwrap_or(0)
     }
