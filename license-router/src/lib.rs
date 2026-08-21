@@ -53,6 +53,34 @@ impl LicenseRouter {
         env.storage().instance().set(&symbol_short!("lic_cnt"), &0u32);
     }
 
+    /// Step 1 of admin handoff: current admin proposes a successor. The
+    /// proposal must be accepted by the new admin via `accept_admin` before
+    /// control actually transfers — a compromised key alone can't hand
+    /// itself off without the new admin's own signature.
+    pub fn propose_admin(env: Env, new_admin: Address) {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .expect("not initialized");
+        admin.require_auth();
+        env.storage()
+            .instance()
+            .set(&symbol_short!("proposed"), &new_admin);
+    }
+
+    /// Step 2: the proposed admin accepts, completing the handoff.
+    pub fn accept_admin(env: Env) {
+        let proposed: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("proposed"))
+            .expect("no admin proposal pending");
+        proposed.require_auth();
+        env.storage().instance().set(&symbol_short!("admin"), &proposed);
+        env.storage().instance().remove(&symbol_short!("proposed"));
+    }
+
     /// Issue a new license for a dataset. Caller pays fee_paid_stroops.
     pub fn issue_license(
         env: Env,
