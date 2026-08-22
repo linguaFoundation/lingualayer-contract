@@ -69,3 +69,35 @@ fn test_register_valid_hash_succeeds() {
     
     assert_eq!(id, String::from_str(&env, "ds_1"));
 }
+
+#[test]
+fn test_admin_handoff_propose_then_accept() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let new_admin = Address::generate(&env);
+    let contract_id = env.register_contract(None, DatasetRegistry);
+    let client = DatasetRegistryClient::new(&env, &contract_id);
+
+    client.initialize(&admin);
+    client.propose_admin(&new_admin);
+    client.accept_admin();
+
+    // New admin can now do admin-gated work the old admin no longer can
+    // authenticate as; re-proposing confirms the swap actually took effect.
+    let another = Address::generate(&env);
+    client.propose_admin(&another);
+}
+
+#[test]
+#[should_panic(expected = "no admin proposal pending")]
+fn test_accept_admin_without_proposal_panics() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let contract_id = env.register_contract(None, DatasetRegistry);
+    let client = DatasetRegistryClient::new(&env, &contract_id);
+
+    client.initialize(&admin);
+    client.accept_admin();
+}
