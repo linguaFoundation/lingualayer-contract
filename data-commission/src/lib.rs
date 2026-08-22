@@ -25,6 +25,7 @@ pub enum CommissionState {
     Fulfilled,
     Cancelled,
     Expired,
+    Disputed,
 }
 
 #[contracttype]
@@ -326,6 +327,92 @@ impl DataCommission {
     }
 
     pub fn version(_env: Env) -> u32 { 1 }
+
+    /// Designate the address that can rule on disputed commissions.
+    /// Admin-gated; callable again to rotate the arbiter.
+    pub fn set_arbiter(env: Env, arbiter: Address) {
+        let admin: Address = env.storage().instance()
+            .get(&symbol_short!("admin"))
+            .expect("not initialized");
+        admin.require_auth();
+
+        env.storage().instance().set(&symbol_short!("arbiter"), &arbiter);
+
+        env.events().publish(
+            (symbol_short!("comm"), symbol_short!("arbiter")),
+            arbiter,
+        );
+    }
+
+    /// The commissioner flags a commission as disputed — e.g. they believe
+    /// the fulfiller's delivery doesn't meet the commission's requirements.
+    /// Only valid while Open (before the admin has released any funds);
+    /// freezes the commission until the arbiter rules on it.
+    pub fn raise_dispute(env: Env, commission_id: String, raised_by: Address) {
+        raised_by.require_auth();
+
+        let mut comm: Commission = env.storage().persistent()
+            .get(&commission_id)
+            .expect("commission not found");
+
+        if raised_by != comm.commissioner {
+            panic!("only the commissioner can raise a dispute");
+        }
+        if comm.state != CommissionState::Open {
+            panic!("commission not open");
+        }
+
+        comm.state = CommissionState::Disputed;
+        env.storage().persistent().set(&commission_id, &comm);
+
+        env.events().publish(
+            (symbol_short!("comm"), symbol_short!("disputed")),
+            commission_id,
+        );
+    }
+
+    /// The arbiter rules on a disputed commission: either award the full
+    /// bounty to the fulfiller (delivery was acceptable) or refund the
+    /// commissioner (it wasn't). This is a binary, whole-bounty ruling —
+    /// it doesn't compose with milestone-partial payouts.
+    pub fn resolve_dispute(
+        env: Env,
+        commission_id: String,
+        award_to_fulfiller: bool,
+        fulfiller: Address,
+        dataset_id: String,
+    ) {
+        let arbiter: Address = env.storage().instance()
+            .get(&symbol_short!("arbiter"))
+            .expect("no arbiter set");
+        arbiter.require_auth();
+
+        let mut comm: Commission = env.storage().persistent()
+            .get(&commission_id)
+            .expect("commission not found");
+
+        if comm.state != CommissionState::Disputed {
+            panic!("commission not disputed");
+        }
+
+        let tok = token::Client::new(&env, &comm.bounty_token);
+
+        if award_to_fulfiller {
+            tok.transfer(&env.current_contract_address(), &fulfiller, &comm.bounty_amount);
+            comm.state = CommissionState::Fulfilled;
+            comm.fulfiller = Some(fulfiller.clone());
+            comm.fulfilled_dataset_id = Some(dataset_id.clone());
+        } else {
+            tok.transfer(&env.current_contract_address(), &comm.commissioner, &comm.bounty_amount);
+            comm.state = CommissionState::Cancelled;
+        }
+        env.storage().persistent().set(&commission_id, &comm);
+
+        env.events().publish(
+            (symbol_short!("comm"), symbol_short!("resolved")),
+            (commission_id, award_to_fulfiller),
+        );
+    }
 }
 
 #[cfg(test)]
