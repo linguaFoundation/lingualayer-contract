@@ -60,6 +60,34 @@ impl DatasetRegistry {
         env.storage().instance().set(&symbol_short!("count"), &0u32);
     }
 
+    /// Step 1 of admin handoff: current admin proposes a successor. The
+    /// proposal must be accepted by the new admin via `accept_admin` before
+    /// control actually transfers — a compromised key alone can't hand
+    /// itself off without the new admin's own signature.
+    pub fn propose_admin(env: Env, new_admin: Address) {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .expect("not initialized");
+        admin.require_auth();
+        env.storage()
+            .instance()
+            .set(&symbol_short!("proposed"), &new_admin);
+    }
+
+    /// Step 2: the proposed admin accepts, completing the handoff.
+    pub fn accept_admin(env: Env) {
+        let proposed: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("proposed"))
+            .expect("no admin proposal pending");
+        proposed.require_auth();
+        env.storage().instance().set(&symbol_short!("admin"), &proposed);
+        env.storage().instance().remove(&symbol_short!("proposed"));
+    }
+
     pub fn register_dataset(
         env: Env,
         owner: Address,
@@ -75,6 +103,15 @@ impl DatasetRegistry {
 
         if metadata_hash == soroban_sdk::BytesN::from_array(&env, &[0u8; 32]) {
             panic!("metadata hash cannot be zero");
+        }
+
+        // Reject a dataset already registered under this exact metadata
+        // hash — otherwise the same dataset could be re-registered under a
+        // fresh id to farm registration reputation or double-collect
+        // commission-fulfilment credit for one piece of underlying work.
+        let hash_key = String::from_str(&env, &format!("hash_{:?}", metadata_hash));
+        if env.storage().persistent().has(&hash_key) {
+            panic!("dataset with this metadata hash is already registered");
         }
 
         let total: u32 = contributors.iter().map(|c| c.share_bps).sum();
@@ -100,8 +137,10 @@ impl DatasetRegistry {
         };
 
         env.storage().persistent().set(&id, &dataset);
+        env.storage().persistent().set(&hash_key, &id);
         env.storage().instance().set(&symbol_short!("count"), &(count + 1));
         env.storage().persistent().extend_ttl(&id, 7_776_000, 7_776_000);
+        env.storage().persistent().extend_ttl(&hash_key, 7_776_000, 7_776_000);
 
         // Update owner reputation
         Self::increment_reputation(&env, &owner);
@@ -143,6 +182,14 @@ impl DatasetRegistry {
 
     pub fn dataset_count(env: Env) -> u32 {
         env.storage().instance().get(&symbol_short!("count")).unwrap_or(0)
+    }
+
+    /// Look up which dataset (if any) already owns a given metadata hash —
+    /// lets a caller check for a duplicate before attempting registration
+    /// instead of relying solely on register_dataset's panic.
+    pub fn dataset_id_for_hash(env: Env, metadata_hash: soroban_sdk::BytesN<32>) -> Option<String> {
+        let hash_key = String::from_str(&env, &format!("hash_{:?}", metadata_hash));
+        env.storage().persistent().get(&hash_key)
     }
 
     pub fn update_metadata(env: Env, dataset_id: String, new_hash: soroban_sdk::BytesN<32>) {
