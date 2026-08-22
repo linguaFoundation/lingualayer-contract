@@ -200,3 +200,6 @@ impl QualityOracle {
 
     pub fn version(_env: Env) -> u32 { 1 }
 }
+
+#[cfg(test)]
+mod test;
