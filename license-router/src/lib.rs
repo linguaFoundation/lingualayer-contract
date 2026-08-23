@@ -2,8 +2,7 @@
 extern crate alloc;
 use alloc::format;
 use soroban_sdk::{
-    contract, contractclient, contractimpl, contracttype, symbol_short,
-    Address, Env, String, Vec,
+    contract, contractclient, contractimpl, contracttype, symbol_short, Address, Env, String,
 };
 
 /// Default royalty multiplier (1x, in bps) used when no oracle is
@@ -24,10 +23,10 @@ pub trait QualityOracleInterface {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum LicenseType {
-    Research,       // Non-commercial, attribution required
-    Commercial,     // Full commercial rights
-    NonProfit,      // NGO/academic use
-    Government,     // Government use with audit rights
+    Research,   // Non-commercial, attribution required
+    Commercial, // Full commercial rights
+    NonProfit,  // NGO/academic use
+    Government, // Government use with audit rights
 }
 
 #[contracttype]
@@ -64,9 +63,15 @@ impl LicenseRouter {
             panic!("already initialized");
         }
         admin.require_auth();
-        env.storage().instance().set(&symbol_short!("admin"), &admin);
-        env.storage().instance().set(&symbol_short!("registry"), &registry_contract);
-        env.storage().instance().set(&symbol_short!("lic_cnt"), &0u32);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("admin"), &admin);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("registry"), &registry_contract);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("lic_cnt"), &0u32);
     }
 
     /// Step 1 of admin handoff: current admin proposes a successor. The
@@ -93,7 +98,9 @@ impl LicenseRouter {
             .get(&symbol_short!("proposed"))
             .expect("no admin proposal pending");
         proposed.require_auth();
-        env.storage().instance().set(&symbol_short!("admin"), &proposed);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("admin"), &proposed);
         env.storage().instance().remove(&symbol_short!("proposed"));
     }
 
@@ -112,8 +119,8 @@ impl LicenseRouter {
         // Validate fee minimums per license type
         let min_fee: i128 = match license_type {
             LicenseType::Research => 0,
-            LicenseType::NonProfit => 1_000_000, // 0.1 USDC
-            LicenseType::Government => 10_000_000, // 1 USDC
+            LicenseType::NonProfit => 1_000_000,    // 0.1 USDC
+            LicenseType::Government => 10_000_000,  // 1 USDC
             LicenseType::Commercial => 100_000_000, // 10 USDC
         };
         if fee_paid_stroops < min_fee {
@@ -171,7 +178,13 @@ impl LicenseRouter {
 
         env.events().publish(
             (symbol_short!("license"), symbol_short!("issued")),
-            (id.clone(), dataset_id, licensee, fee_paid_stroops, effective_royalty_stroops),
+            (
+                id.clone(),
+                dataset_id,
+                licensee,
+                fee_paid_stroops,
+                effective_royalty_stroops,
+            ),
         );
 
         id

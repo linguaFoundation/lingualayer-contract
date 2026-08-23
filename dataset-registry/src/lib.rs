@@ -1,14 +1,16 @@
 #![no_std]
+#![allow(clippy::too_many_arguments)]
 extern crate alloc;
 use alloc::format;
-use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short,
-    Address, Env, String, Vec,
-};
+use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, Env, String, Vec};
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum DatasetState { Active, Deprecated, UnderReview }
+pub enum DatasetState {
+    Active,
+    Deprecated,
+    UnderReview,
+}
 
 #[contracttype]
 #[derive(Clone, Debug)]
@@ -56,7 +58,9 @@ impl DatasetRegistry {
             panic!("already initialized");
         }
         admin.require_auth();
-        env.storage().instance().set(&symbol_short!("admin"), &admin);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("admin"), &admin);
         env.storage().instance().set(&symbol_short!("count"), &0u32);
     }
 
@@ -84,7 +88,9 @@ impl DatasetRegistry {
             .get(&symbol_short!("proposed"))
             .expect("no admin proposal pending");
         proposed.require_auth();
-        env.storage().instance().set(&symbol_short!("admin"), &proposed);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("admin"), &proposed);
         env.storage().instance().remove(&symbol_short!("proposed"));
     }
 
@@ -115,10 +121,15 @@ impl DatasetRegistry {
         }
 
         let total: u32 = contributors.iter().map(|c| c.share_bps).sum();
-        if total != 10000 { panic!("contributor shares must sum to 10000 bps"); }
+        if total != 10000 {
+            panic!("contributor shares must sum to 10000 bps");
+        }
 
-        let count: u32 = env.storage().instance()
-            .get(&symbol_short!("count")).unwrap_or(0);
+        let count: u32 = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("count"))
+            .unwrap_or(0);
         let id = String::from_str(&env, &format!("ds_{}", count + 1));
 
         let dataset = Dataset {
@@ -138,9 +149,15 @@ impl DatasetRegistry {
 
         env.storage().persistent().set(&id, &dataset);
         env.storage().persistent().set(&hash_key, &id);
-        env.storage().instance().set(&symbol_short!("count"), &(count + 1));
-        env.storage().persistent().extend_ttl(&id, 7_776_000, 7_776_000);
-        env.storage().persistent().extend_ttl(&hash_key, 7_776_000, 7_776_000);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("count"), &(count + 1));
+        env.storage()
+            .persistent()
+            .extend_ttl(&id, 7_776_000, 7_776_000);
+        env.storage()
+            .persistent()
+            .extend_ttl(&hash_key, 7_776_000, 7_776_000);
 
         // Update owner reputation
         Self::increment_reputation(&env, &owner);
@@ -154,34 +171,45 @@ impl DatasetRegistry {
 
     fn increment_reputation(env: &Env, address: &Address) {
         let rep_key = String::from_str(env, &format!("rep_{:?}", address));
-        let mut rep: ContributorReputation = env.storage().persistent()
-            .get(&rep_key)
-            .unwrap_or(ContributorReputation {
-                address: address.clone(),
-                reputation_score: 0,
-                datasets_registered: 0,
-                total_royalties_stroops: 0,
-                quality_average: 0,
-            });
+        let mut rep: ContributorReputation =
+            env.storage()
+                .persistent()
+                .get(&rep_key)
+                .unwrap_or(ContributorReputation {
+                    address: address.clone(),
+                    reputation_score: 0,
+                    datasets_registered: 0,
+                    total_royalties_stroops: 0,
+                    quality_average: 0,
+                });
         rep.datasets_registered += 1;
         rep.reputation_score = (rep.reputation_score + 50).min(1000);
         env.storage().persistent().set(&rep_key, &rep);
-        env.storage().persistent().extend_ttl(&rep_key, 7_776_000, 7_776_000);
+        env.storage()
+            .persistent()
+            .extend_ttl(&rep_key, 7_776_000, 7_776_000);
     }
 
     pub fn get_reputation(env: Env, address: Address) -> ContributorReputation {
         let rep_key = String::from_str(&env, &format!("rep_{:?}", address));
-        env.storage().persistent()
+        env.storage()
+            .persistent()
             .get(&rep_key)
             .expect("no reputation data")
     }
 
     pub fn get_dataset(env: Env, dataset_id: String) -> Dataset {
-        env.storage().persistent().get(&dataset_id).expect("dataset not found")
+        env.storage()
+            .persistent()
+            .get(&dataset_id)
+            .expect("dataset not found")
     }
 
     pub fn dataset_count(env: Env) -> u32 {
-        env.storage().instance().get(&symbol_short!("count")).unwrap_or(0)
+        env.storage()
+            .instance()
+            .get(&symbol_short!("count"))
+            .unwrap_or(0)
     }
 
     /// Look up which dataset (if any) already owns a given metadata hash —
@@ -193,8 +221,11 @@ impl DatasetRegistry {
     }
 
     pub fn update_metadata(env: Env, dataset_id: String, new_hash: soroban_sdk::BytesN<32>) {
-        let mut ds: Dataset = env.storage().persistent()
-            .get(&dataset_id).expect("dataset not found");
+        let mut ds: Dataset = env
+            .storage()
+            .persistent()
+            .get(&dataset_id)
+            .expect("dataset not found");
         ds.owner.require_auth();
         if new_hash == soroban_sdk::BytesN::from_array(&env, &[0u8; 32]) {
             panic!("metadata hash cannot be zero");
@@ -205,8 +236,11 @@ impl DatasetRegistry {
     }
 
     pub fn deprecate_dataset(env: Env, dataset_id: String) {
-        let mut ds: Dataset = env.storage().persistent()
-            .get(&dataset_id).expect("dataset not found");
+        let mut ds: Dataset = env
+            .storage()
+            .persistent()
+            .get(&dataset_id)
+            .expect("dataset not found");
         ds.owner.require_auth();
         ds.state = DatasetState::Deprecated;
         env.storage().persistent().set(&dataset_id, &ds);
@@ -216,7 +250,9 @@ impl DatasetRegistry {
         );
     }
 
-    pub fn version(_env: Env) -> u32 { 3 }
+    pub fn version(_env: Env) -> u32 {
+        3
+    }
 }
 
 #[cfg(test)]

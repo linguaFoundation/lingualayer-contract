@@ -135,15 +135,32 @@ fn test_fuzz_score_aggregation_invariants_hold_across_random_sequence() {
 
         // average_score never leaves the valid score range regardless of
         // how many or which random scores fed into it.
-        assert!(quality.average_score <= MAX_SCORE, "iteration {i}: average_score {} out of range", quality.average_score);
-        assert_eq!(quality.average_score as u64, shadow_avg, "iteration {i}: average diverged from the contract's own incremental formula");
-        assert_eq!(quality.attestation_count, shadow_count as u32, "iteration {i}: attestation_count diverged");
+        assert!(
+            quality.average_score <= MAX_SCORE,
+            "iteration {i}: average_score {} out of range",
+            quality.average_score
+        );
+        assert_eq!(
+            quality.average_score as u64, shadow_avg,
+            "iteration {i}: average diverged from the contract's own incremental formula"
+        );
+        assert_eq!(
+            quality.attestation_count, shadow_count as u32,
+            "iteration {i}: attestation_count diverged"
+        );
 
         let tier = expected_tier(quality.average_score);
-        assert_eq!(quality.tier, tier, "iteration {i}: tier inconsistent with its own average_score");
+        assert_eq!(
+            quality.tier, tier,
+            "iteration {i}: tier inconsistent with its own average_score"
+        );
 
         let bps = client.royalty_multiplier_bps(&dataset_id);
-        assert_eq!(bps, expected_royalty_bps(&tier), "iteration {i}: royalty multiplier inconsistent with tier");
+        assert_eq!(
+            bps,
+            expected_royalty_bps(&tier),
+            "iteration {i}: royalty multiplier inconsistent with tier"
+        );
         assert!(
             bps == 7500 || bps == 10000 || bps == 12500 || bps == 15000,
             "iteration {i}: royalty multiplier {bps} not one of the four valid values"

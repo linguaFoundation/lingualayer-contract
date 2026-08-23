@@ -2,16 +2,15 @@
 extern crate alloc;
 use alloc::format;
 use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short, token,
-    Address, Env, String, Vec,
+    contract, contractimpl, contracttype, symbol_short, token, Address, Env, String, Vec,
 };
 
 #[contracttype]
 #[derive(Clone, Debug)]
 pub struct SplitConfig {
     pub dataset_id: String,
-    pub token: Address,        // SAC USDC address
-    pub treasury: Address,     // Protocol treasury (5% fee)
+    pub token: Address,                    // SAC USDC address
+    pub treasury: Address,                 // Protocol treasury (5% fee)
     pub contributors: Vec<(Address, u32)>, // (address, share_bps)
 }
 
@@ -35,8 +34,12 @@ impl RoyaltySplitter {
             panic!("already initialized");
         }
         admin.require_auth();
-        env.storage().instance().set(&symbol_short!("admin"), &admin);
-        env.storage().instance().set(&symbol_short!("pay_cnt"), &0u32);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("admin"), &admin);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("pay_cnt"), &0u32);
     }
 
     /// Step 1 of admin handoff: current admin proposes a successor. The
@@ -63,7 +66,9 @@ impl RoyaltySplitter {
             .get(&symbol_short!("proposed"))
             .expect("no admin proposal pending");
         proposed.require_auth();
-        env.storage().instance().set(&symbol_short!("admin"), &proposed);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("admin"), &proposed);
         env.storage().instance().remove(&symbol_short!("proposed"));
     }
 
@@ -82,9 +87,7 @@ impl RoyaltySplitter {
             panic!("contributor shares must sum to 10000 bps");
         }
 
-        env.storage()
-            .persistent()
-            .set(&config.dataset_id, &config);
+        env.storage().persistent().set(&config.dataset_id, &config);
     }
 
     /// Execute a royalty payout for a dataset from accumulated fees.
@@ -123,11 +126,7 @@ impl RoyaltySplitter {
         for (contributor, share_bps) in config.contributors.iter() {
             let payout = distributable * (share_bps as i128) / 10000;
             if payout > 0 {
-                token_client.transfer(
-                    &env.current_contract_address(),
-                    &contributor,
-                    &payout,
-                );
+                token_client.transfer(&env.current_contract_address(), &contributor, &payout);
             }
         }
 
@@ -168,3 +167,6 @@ impl RoyaltySplitter {
         2
     }
 }
+
+#[cfg(test)]
+mod test;

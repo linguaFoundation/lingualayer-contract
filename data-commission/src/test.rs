@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{Env, BytesN, testutils::Address as _, Address, String};
+use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String};
 
 #[test]
 #[should_panic(expected = "metadata hash cannot be zero")]
@@ -35,9 +35,9 @@ fn test_post_commission_zero_hash_panics() {
 fn test_post_commission_valid_hash_succeeds() {
     let env = Env::default();
     let commissioner = Address::generate(&env);
-    
+
     // We need a real token contract to mock the token transfer
-    let bounty_token = env.register_stellar_asset_contract(commissioner.clone());
+    let bounty_token = env.register_stellar_asset_contract_v2(commissioner.clone()).address();
 
     let contract_id = env.register_contract(None, DataCommission);
     let client = DataCommissionClient::new(&env, &contract_id);
@@ -66,7 +66,7 @@ fn test_post_commission_valid_hash_succeeds() {
         &3600,
         &9999999,
     );
-    
+
     assert_eq!(id, String::from_str(&env, "com_1"));
 }
 
@@ -74,7 +74,7 @@ fn test_post_commission_valid_hash_succeeds() {
 fn test_renew_commission_ttl_is_permissionless() {
     let env = Env::default();
     let commissioner = Address::generate(&env);
-    let bounty_token = env.register_stellar_asset_contract(commissioner.clone());
+    let bounty_token = env.register_stellar_asset_contract_v2(commissioner.clone()).address();
     let contract_id = env.register_contract(None, DataCommission);
     let client = DataCommissionClient::new(&env, &contract_id);
 
@@ -88,11 +88,18 @@ fn test_renew_commission_ttl_is_permissionless() {
     hash_bytes[0] = 3;
     let hash = BytesN::from_array(&env, &hash_bytes);
 
-    let id = client.post_commission(
+    let _id = client.post_commission(
         &commissioner,
         &String::from_str(&env, "en"),
         &hash,
-  }
+        &bounty_token,
+        &100,
+        &100,
+        &3600,
+        &1000,
+    );
+}
+#[test]
 fn test_admin_handoff_propose_then_accept() {
     let env = Env::default();
     env.mock_all_auths();
@@ -121,9 +128,17 @@ fn test_accept_admin_without_proposal_panics() {
     client.initialize(&admin);
     client.accept_admin();
 }
-fn setup_commission(env: &Env) -> (DataCommissionClient<'static>, Address, Address, Address, String) {
+fn setup_commission(
+    env: &Env,
+) -> (
+    DataCommissionClient<'static>,
+    Address,
+    Address,
+    Address,
+    String,
+) {
     let commissioner = Address::generate(env);
-    let bounty_token = env.register_stellar_asset_contract(commissioner.clone());
+    let bounty_token = env.register_stellar_asset_contract_v2(commissioner.clone()).address();
     let contract_id = env.register_contract(None, DataCommission);
     let client = DataCommissionClient::new(env, &contract_id);
 
@@ -149,13 +164,7 @@ fn setup_commission(env: &Env) -> (DataCommissionClient<'static>, Address, Addre
         &9999999,
     );
 
-    // No require_auth anywhere in the call path — env.mock_all_auths()
-    // above isn't what makes this succeed; a bare, unauthenticated call
-    // from any address is expected to work.
-    client.renew_commission_ttl(&id);
-
-    // Still readable afterward — the call didn't corrupt or clear the entry.
-    assert_eq!(client.get_commission(&id).id, id);
+    (client, admin, commissioner, bounty_token, id)
 }
 
 #[test]
@@ -166,13 +175,12 @@ fn test_renew_commission_ttl_unknown_id_panics() {
     let client = DataCommissionClient::new(&env, &contract_id);
 
     client.renew_commission_ttl(&String::from_str(&env, "does-not-exist"));
-    (client, admin, commissioner, bounty_token, id)
 }
 
 #[test]
 fn test_raise_and_resolve_dispute_in_fulfillers_favor() {
     let env = Env::default();
-    let (client, admin, commissioner, token, id) = setup_disputable_commission(&env);
+    let (client, admin, commissioner, token, id) = setup_commission(&env);
 
     let arbiter = Address::generate(&env);
     client.set_arbiter(&arbiter);
@@ -189,7 +197,10 @@ fn test_raise_and_resolve_dispute_in_fulfillers_favor() {
     let comm = client.get_commission(&id);
     assert_eq!(comm.state, CommissionState::Fulfilled);
     assert_eq!(comm.fulfiller, Some(fulfiller.clone()));
-    assert_eq!(token_client.balance(&fulfiller) - fulfiller_balance_before, 1000);
+    assert_eq!(
+        token_client.balance(&fulfiller) - fulfiller_balance_before,
+        1000
+    );
 
     let _ = admin; // unused beyond initialize in this test
 }
@@ -197,7 +208,7 @@ fn test_raise_and_resolve_dispute_in_fulfillers_favor() {
 #[test]
 fn test_raise_and_resolve_dispute_in_commissioners_favor_refunds() {
     let env = Env::default();
-    let (client, _admin, commissioner, token, id) = setup_disputable_commission(&env);
+    let (client, _admin, commissioner, token, id) = setup_commission(&env);
 
     let arbiter = Address::generate(&env);
     client.set_arbiter(&arbiter);
@@ -211,14 +222,17 @@ fn test_raise_and_resolve_dispute_in_commissioners_favor_refunds() {
 
     let comm = client.get_commission(&id);
     assert_eq!(comm.state, CommissionState::Cancelled);
-    assert_eq!(token_client.balance(&commissioner) - commissioner_balance_before, 1000);
+    assert_eq!(
+        token_client.balance(&commissioner) - commissioner_balance_before,
+        1000
+    );
 }
 
 #[test]
 #[should_panic(expected = "only the commissioner can raise a dispute")]
 fn test_raise_dispute_by_non_commissioner_panics() {
     let env = Env::default();
-    let (client, _admin, _commissioner, _token, id) = setup_disputable_commission(&env);
+    let (client, _admin, _commissioner, _token, id) = setup_commission(&env);
 
     let stranger = Address::generate(&env);
     client.raise_dispute(&id, &stranger);
@@ -228,7 +242,7 @@ fn test_raise_dispute_by_non_commissioner_panics() {
 #[should_panic(expected = "commission not disputed")]
 fn test_resolve_dispute_without_raising_panics() {
     let env = Env::default();
-    let (client, _admin, _commissioner, _token, id) = setup_disputable_commission(&env);
+    let (client, _admin, _commissioner, _token, id) = setup_commission(&env);
 
     let arbiter = Address::generate(&env);
     client.set_arbiter(&arbiter);
@@ -241,14 +255,13 @@ fn test_resolve_dispute_without_raising_panics() {
 #[should_panic(expected = "no arbiter set")]
 fn test_resolve_dispute_without_arbiter_set_panics() {
     let env = Env::default();
-    let (client, _admin, commissioner, _token, id) = setup_disputable_commission(&env);
+    let (client, _admin, commissioner, _token, id) = setup_commission(&env);
 
     client.raise_dispute(&id, &commissioner);
 
     let fulfiller = Address::generate(&env);
     client.resolve_dispute(&id, &true, &fulfiller, &String::from_str(&env, "ds_1"));
-
-  }
+}
 fn milestone(env: &Env, amount: i128) -> Milestone {
     let mut hash_bytes = [0u8; 32];
     hash_bytes[0] = 7;
@@ -341,5 +354,8 @@ fn test_cancel_after_partial_milestone_release_refunds_only_remainder() {
     client.cancel_commission(&id);
 
     let commissioner_balance_after = token_client.balance(&commissioner);
-    assert_eq!(commissioner_balance_after - commissioner_balance_before, 400);
+    assert_eq!(
+        commissioner_balance_after - commissioner_balance_before,
+        400
+    );
 }

@@ -9,4 +9,4 @@ members = [
 ]
 
 [workspace.dependencies]
-soroban-sdk = "21.0.0"
+soroban-sdk = "21.7.7"
