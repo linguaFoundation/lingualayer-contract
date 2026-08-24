@@ -76,7 +76,31 @@
                 },
                 "durability": "persistent",
                 "val": {
-                  "bool": true
+                  "map": [
+                    {
+                      "key": {
+                        "symbol": "stake"
+                      },
+                      "val": {
+                        "i128": {
+                          "hi": 0,
+                          "lo": 100000000
+                        }
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "status"
+                      },
+                      "val": {
+                        "vec": [
+                          {
+                            "symbol": "Active"
+                          }
+                        ]
+                      }
+                    }
+                  ]
                 }
               }
             },
@@ -395,7 +419,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'score must be 0-100' from contract function 'Symbol(obj#37)'"
+                  "string": "caught panic 'score must be 0-100' from contract function 'Symbol(obj#41)'"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
