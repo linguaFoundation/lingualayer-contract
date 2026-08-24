@@ -127,8 +127,86 @@ impl RoyaltySplitter {
         env.storage().instance().remove(&symbol_short!("proposed"));
     }
 
+    /// Freeze every state-mutating entry point. Admin only.
+    ///
+    /// This is incident-response machinery: if a vulnerability is found before
+    /// or during testnet, the damage window is however long it takes to get a
+    /// transaction through, not however long it takes to ship a fix.
+    ///
+    /// Reads stay available while paused, deliberately. Integrators and the
+    /// front end need to keep answering questions about existing state during
+    /// an incident, and a read cannot make the problem worse.
+    pub fn pause(env: Env) {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .expect("not initialized");
+        admin.require_auth();
+
+        if Self::is_paused(env.clone()) {
+            panic!("already paused");
+        }
+        env.storage()
+            .instance()
+            .set(&symbol_short!("paused"), &true);
+
+        env.events().publish(
+            (symbol_short!("pause"), symbol_short!("paused")),
+            (admin, env.ledger().timestamp()),
+        );
+    }
+
+    /// Lift the freeze. Admin only.
+    pub fn unpause(env: Env) {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .expect("not initialized");
+        admin.require_auth();
+
+        if !Self::is_paused(env.clone()) {
+            panic!("not paused");
+        }
+        env.storage()
+            .instance()
+            .set(&symbol_short!("paused"), &false);
+
+        env.events().publish(
+            (symbol_short!("pause"), symbol_short!("unpaused")),
+            (admin, env.ledger().timestamp()),
+        );
+    }
+
+    /// Whether writes are currently frozen. A read, so it answers while paused.
+    pub fn is_paused(env: Env) -> bool {
+        env.storage()
+            .instance()
+            .get(&symbol_short!("paused"))
+            .unwrap_or(false)
+    }
+
+    /// Reject a state-mutating call while the contract is frozen.
+    ///
+    /// Checked before authorization on purpose: a paused contract rejects the
+    /// call whoever is making it, so there is no reason to do the more
+    /// expensive auth work first, and no signature is consumed by a call that
+    /// was never going to land.
+    fn require_not_paused(env: &Env) {
+        if env
+            .storage()
+            .instance()
+            .get(&symbol_short!("paused"))
+            .unwrap_or(false)
+        {
+            panic!("contract paused");
+        }
+    }
+
     /// Register a royalty split configuration for a dataset.
     pub fn register_split(env: Env, config: SplitConfig) {
+        Self::require_not_paused(&env);
         Self::bump_instance(&env);
         let admin: Address = env
             .storage()
@@ -153,6 +231,7 @@ impl RoyaltySplitter {
     /// Execute a royalty payout for a dataset from accumulated fees.
     /// Deducts 5% protocol treasury fee then splits remainder.
     pub fn distribute(env: Env, dataset_id: String, total_amount: i128) {
+        Self::require_not_paused(&env);
         Self::bump_instance(&env);
         let admin: Address = env
             .storage()
@@ -299,6 +378,7 @@ impl RoyaltySplitter {
     /// Configure (or update) the QualityOracle contract used to read each
     /// dataset's quality tier at payout time. Admin only.
     pub fn set_oracle(env: Env, oracle_contract: Address) {
+        Self::require_not_paused(&env);
         let admin: Address = env
             .storage()
             .instance()
@@ -354,7 +434,7 @@ impl RoyaltySplitter {
     }
 
     pub fn version(_env: Env) -> u32 {
-        3
+        4
     }
 
     pub fn upgrade(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
@@ -364,7 +444,8 @@ impl RoyaltySplitter {
             .get(&symbol_short!("admin"))
             .expect("not initialized");
         admin.require_auth();
-        env.deployer().update_current_contract_wasm(new_wasm_hash.clone());
+        env.deployer()
+            .update_current_contract_wasm(new_wasm_hash.clone());
         env.events().publish(
             (symbol_short!("contract"), symbol_short!("upgraded")),
             (new_wasm_hash, env.ledger().sequence()),
@@ -374,6 +455,9 @@ impl RoyaltySplitter {
 
 #[cfg(test)]
 mod test;
+
+#[cfg(test)]
+mod pause_test;
 
 #[cfg(test)]
 mod ttl_test;
