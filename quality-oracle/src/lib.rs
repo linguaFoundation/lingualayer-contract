@@ -1,13 +1,18 @@
 #![no_std]
 extern crate alloc;
 use alloc::format;
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env, String};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env, String, Vec};
 
 /// Maximum quality score (100 points)
 const MAX_SCORE: u32 = 100;
 /// Minimum stake to become a certified curator (10 XLM in stroops)
-#[allow(dead_code)]
 const MIN_CURATOR_STAKE: i128 = 100_000_000;
+/// A curator's score must deviate from consensus by more than this many
+/// points before it's considered a malicious/outlier attestation.
+const SLASH_DEVIATION_THRESHOLD: u32 = 30;
+/// Fraction of stake burned per slash (20%).
+const SLASH_BPS: i128 = 2_000;
+const TOTAL_BPS: i128 = 10_000;
 
 
 #[contracterror]
@@ -21,6 +26,7 @@ pub enum Error {
     CuratorNotRegistered = 5,
     ScoreOutOfRange = 6,
     NoQualityDataForDataset = 7,
+    CuratorBanned = 8,
 }
 
 #[contracttype]
@@ -51,6 +57,22 @@ pub enum QualityTier {
     Silver,   // 40-69
     Gold,     // 70-84
     Platinum, // 85-100
+}
+
+/// A curator's standing after zero or more slashes.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CuratorStatus {
+    Active,
+    SlashWarning,
+    Banned,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct CuratorState {
+    pub stake: i128,
+    pub status: CuratorStatus,
 }
 
 /// On-chain data quality attestation oracle.
@@ -110,11 +132,15 @@ impl QualityOracle {
     /// Register a curator by staking XLM. Stakers can be slashed for bad scores.
     pub fn register_curator(env: Env, curator: Address) -> Result<(), Error> {
         curator.require_auth();
-        let key = String::from_str(&env, &format!("cur_{:?}", curator));
+        let key = Self::curator_key(&env, &curator);
         if env.storage().persistent().has(&key) {
             return Err(Error::CuratorAlreadyRegistered);
         }
-        env.storage().persistent().set(&key, &true);
+        let state = CuratorState {
+            stake: MIN_CURATOR_STAKE,
+            status: CuratorStatus::Active,
+        };
+        env.storage().persistent().set(&key, &state);
         env.storage()
             .persistent()
             .extend_ttl(&key, 7_776_000, 7_776_000);
@@ -143,10 +169,15 @@ impl QualityOracle {
     ) -> Result<(), Error> {
         curator.require_auth();
 
-        // Validate curator is registered
-        let cur_key = String::from_str(&env, &format!("cur_{:?}", curator));
-        if !env.storage().persistent().has(&cur_key) {
-            return Err(Error::CuratorNotRegistered);
+        // Validate curator is registered and in good standing
+        let cur_key = Self::curator_key(&env, &curator);
+        let cur_state: CuratorState = env
+            .storage()
+            .persistent()
+            .get(&cur_key)
+            .ok_or(Error::CuratorNotRegistered)?;
+        if cur_state.status == CuratorStatus::Banned {
+            return Err(Error::CuratorBanned);
         }
         if score > MAX_SCORE {
             return Err(Error::ScoreOutOfRange);
@@ -160,11 +191,27 @@ impl QualityOracle {
             rubric_hash,
             ledger: env.ledger().sequence(),
         };
-        let attest_key = String::from_str(&env, &format!("att_{:?}_{:?}", dataset_id, curator));
+        let attest_key = Self::attestation_key(&env, &dataset_id, &curator);
         env.storage().persistent().set(&attest_key, &attest);
         env.storage()
             .persistent()
             .extend_ttl(&attest_key, 7_776_000, 7_776_000);
+
+        // Track which curators have attested to this dataset, so consensus
+        // (median) can be recomputed later for slashing.
+        let list_key = Self::attester_list_key(&env, &dataset_id);
+        let mut attesters: Vec<Address> = env
+            .storage()
+            .persistent()
+            .get(&list_key)
+            .unwrap_or(Vec::new(&env));
+        if !attesters.contains(&curator) {
+            attesters.push_back(curator.clone());
+        }
+        env.storage().persistent().set(&list_key, &attesters);
+        env.storage()
+            .persistent()
+            .extend_ttl(&list_key, 7_776_000, 7_776_000);
 
         // Update aggregate score
         let agg_key = String::from_str(&env, &format!("agg_{:?}", dataset_id));
@@ -209,6 +256,110 @@ impl QualityOracle {
             .ok_or(Error::NoQualityDataForDataset)?
     }
 
+    /// Get a curator's stake and standing.
+    pub fn get_curator(env: Env, curator: Address) -> CuratorState {
+        let key = Self::curator_key(&env, &curator);
+        env.storage()
+            .persistent()
+            .get(&key)
+            .expect("curator not registered")
+    }
+
+    /// Running total of stroops swept to the protocol treasury via slashing.
+    pub fn treasury_balance(env: Env) -> i128 {
+        env.storage()
+            .instance()
+            .get(&symbol_short!("treasury"))
+            .unwrap_or(0)
+    }
+
+    /// Slash a curator whose attestation for `dataset_id` deviates from
+    /// consensus (the median of every attestation on that dataset) by more
+    /// than `SLASH_DEVIATION_THRESHOLD` points. Admin only.
+    ///
+    /// First offense moves the curator to `SlashWarning`; a second offense
+    /// moves them to `Banned`, after which they can no longer attest. Each
+    /// slash burns 20% of the curator's remaining stake to the protocol
+    /// treasury balance.
+    pub fn slash_curator(env: Env, curator: Address, dataset_id: String) {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .expect("not initialized");
+        admin.require_auth();
+
+        let cur_key = Self::curator_key(&env, &curator);
+        let mut cur_state: CuratorState = env
+            .storage()
+            .persistent()
+            .get(&cur_key)
+            .expect("curator not registered");
+        if cur_state.status == CuratorStatus::Banned {
+            panic!("curator already banned");
+        }
+
+        let attest_key = Self::attestation_key(&env, &dataset_id, &curator);
+        let attestation: QualityAttestation = env
+            .storage()
+            .persistent()
+            .get(&attest_key)
+            .expect("curator has no attestation for this dataset");
+
+        let list_key = Self::attester_list_key(&env, &dataset_id);
+        let attesters: Vec<Address> = env
+            .storage()
+            .persistent()
+            .get(&list_key)
+            .expect("no attestations for dataset");
+
+        let mut scores: alloc::vec::Vec<u32> = alloc::vec::Vec::new();
+        for attester in attesters.iter() {
+            let key = Self::attestation_key(&env, &dataset_id, &attester);
+            let a: QualityAttestation = env
+                .storage()
+                .persistent()
+                .get(&key)
+                .expect("missing attestation for listed attester");
+            scores.push(a.score);
+        }
+        scores.sort_unstable();
+        let mid = scores.len() / 2;
+        let consensus = if scores.len().is_multiple_of(2) {
+            (scores[mid - 1] + scores[mid]) / 2
+        } else {
+            scores[mid]
+        };
+
+        let deviation = attestation.score.abs_diff(consensus);
+        if deviation <= SLASH_DEVIATION_THRESHOLD {
+            panic!("attestation within consensus tolerance, cannot slash");
+        }
+
+        let slash_amount = cur_state.stake * SLASH_BPS / TOTAL_BPS;
+        cur_state.stake -= slash_amount;
+        cur_state.status = match cur_state.status {
+            CuratorStatus::Active => CuratorStatus::SlashWarning,
+            CuratorStatus::SlashWarning => CuratorStatus::Banned,
+            CuratorStatus::Banned => unreachable!(),
+        };
+        env.storage().persistent().set(&cur_key, &cur_state);
+        env.storage()
+            .persistent()
+            .extend_ttl(&cur_key, 7_776_000, 7_776_000);
+
+        let treasury_key = symbol_short!("treasury");
+        let treasury_balance: i128 = env.storage().instance().get(&treasury_key).unwrap_or(0);
+        env.storage()
+            .instance()
+            .set(&treasury_key, &(treasury_balance + slash_amount));
+
+        env.events().publish(
+            (symbol_short!("oracle"), symbol_short!("slashed")),
+            (curator, dataset_id, slash_amount, cur_state.status),
+        );
+    }
+
     /// Extend a dataset's quality-aggregate TTL. Permissionless — anyone
     /// may call this to keep a dataset's quality record (and the royalty
     /// tier it feeds into) from expiring off persistent storage.
@@ -243,6 +394,18 @@ impl QualityOracle {
         }
     }
 
+    fn curator_key(env: &Env, curator: &Address) -> String {
+        String::from_str(env, &format!("cur_{:?}", curator))
+    }
+
+    fn attestation_key(env: &Env, dataset_id: &String, curator: &Address) -> String {
+        String::from_str(env, &format!("att_{:?}_{:?}", dataset_id, curator))
+    }
+
+    fn attester_list_key(env: &Env, dataset_id: &String) -> String {
+        String::from_str(env, &format!("alist_{:?}", dataset_id))
+    }
+
     fn compute_tier(score: u32) -> QualityTier {
         match score {
             0 => QualityTier::Unrated,
@@ -254,7 +417,21 @@ impl QualityOracle {
     }
 
     pub fn version(_env: Env) -> u32 {
-        1
+        2
+    }
+
+    pub fn upgrade(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .expect("not initialized");
+        admin.require_auth();
+        env.deployer().update_current_contract_wasm(new_wasm_hash.clone());
+        env.events().publish(
+            (symbol_short!("contract"), symbol_short!("upgraded")),
+            (new_wasm_hash, env.ledger().sequence()),
+        );
     }
 }
 

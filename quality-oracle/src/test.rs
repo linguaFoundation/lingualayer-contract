@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String};
+use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, IntoVal, String};
 
 #[test]
 fn test_register_and_attest_happy_path() {
@@ -204,4 +204,159 @@ fn test_attest_quality_rejects_unregistered_curator() {
     let dataset_id = String::from_str(&env, "ds_unreg");
     let rubric_hash = BytesN::from_array(&env, &[3u8; 32]);
     client.attest_quality(&curator, &dataset_id, &50, &rubric_hash);
+}
+
+/// Sets up a dataset with three honest curators clustered around a score of
+/// 50 (consensus/median = 50) plus one outlier curator scoring 95 — a
+/// deviation of 45 points, comfortably over the 30-point slash threshold.
+/// Returns (admin, outlier curator, dataset_id).
+fn setup_outlier_scenario(env: &Env, client: &QualityOracleClient) -> (Address, Address, String) {
+    let admin = Address::generate(env);
+    client.initialize(&admin);
+
+    let dataset_id = String::from_str(env, "ds_slash");
+    let rubric_hash = BytesN::from_array(env, &[7u8; 32]);
+
+    for score in [45u32, 50, 55] {
+        let honest = Address::generate(env);
+        client.register_curator(&honest);
+        client.attest_quality(&honest, &dataset_id, &score, &rubric_hash);
+    }
+
+    let outlier = Address::generate(env);
+    client.register_curator(&outlier);
+    client.attest_quality(&outlier, &dataset_id, &95, &rubric_hash);
+
+    (admin, outlier, dataset_id)
+}
+
+#[test]
+fn test_slash_curator_reduces_stake_and_warns_on_first_offense() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, QualityOracle);
+    let client = QualityOracleClient::new(&env, &contract_id);
+    env.mock_all_auths();
+
+    let (_admin, outlier, dataset_id) = setup_outlier_scenario(&env, &client);
+
+    let stake_before = client.get_curator(&outlier).stake;
+    client.slash_curator(&outlier, &dataset_id);
+    let state_after = client.get_curator(&outlier);
+
+    assert_eq!(state_after.stake, stake_before - stake_before * 20 / 100);
+    assert_eq!(state_after.status, CuratorStatus::SlashWarning);
+    assert_eq!(client.treasury_balance(), stake_before * 20 / 100);
+}
+
+#[test]
+fn test_slash_curator_bans_on_second_offense_and_blocks_attestation() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, QualityOracle);
+    let client = QualityOracleClient::new(&env, &contract_id);
+    env.mock_all_auths();
+
+    let (_admin, outlier, dataset_id) = setup_outlier_scenario(&env, &client);
+
+    client.slash_curator(&outlier, &dataset_id);
+    assert_eq!(client.get_curator(&outlier).status, CuratorStatus::SlashWarning);
+
+    // A second dataset where the same curator is again an outlier.
+    let dataset_id_2 = String::from_str(&env, "ds_slash_2");
+    let rubric_hash = BytesN::from_array(&env, &[8u8; 32]);
+    for score in [45u32, 50, 55] {
+        let honest = Address::generate(&env);
+        client.register_curator(&honest);
+        client.attest_quality(&honest, &dataset_id_2, &score, &rubric_hash);
+    }
+    client.attest_quality(&outlier, &dataset_id_2, &95, &rubric_hash);
+
+    client.slash_curator(&outlier, &dataset_id_2);
+    assert_eq!(client.get_curator(&outlier).status, CuratorStatus::Banned);
+
+    let dataset_id_3 = String::from_str(&env, "ds_after_ban");
+    let result = client.try_attest_quality(&outlier, &dataset_id_3, &50, &rubric_hash);
+    assert!(result.is_err());
+}
+
+#[test]
+#[should_panic(expected = "attestation within consensus tolerance, cannot slash")]
+fn test_slash_curator_rejects_scores_within_tolerance() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, QualityOracle);
+    let client = QualityOracleClient::new(&env, &contract_id);
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    client.initialize(&admin);
+
+    let dataset_id = String::from_str(&env, "ds_close");
+    let rubric_hash = BytesN::from_array(&env, &[9u8; 32]);
+
+    let curator_a = Address::generate(&env);
+    client.register_curator(&curator_a);
+    client.attest_quality(&curator_a, &dataset_id, &50, &rubric_hash);
+
+    let curator_b = Address::generate(&env);
+    client.register_curator(&curator_b);
+    client.attest_quality(&curator_b, &dataset_id, &60, &rubric_hash);
+
+    client.slash_curator(&curator_a, &dataset_id);
+}
+
+#[test]
+#[should_panic]
+fn test_slash_curator_rejects_non_admin_caller() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, QualityOracle);
+    let client = QualityOracleClient::new(&env, &contract_id);
+    env.mock_all_auths();
+
+    let (_admin, outlier, dataset_id) = setup_outlier_scenario(&env, &client);
+
+    // Only a non-admin's auth is mocked for this call, so the contract's
+    // internal `admin.require_auth()` has no matching authorization and
+    // must reject the call.
+    let non_admin = Address::generate(&env);
+    env.mock_auths(&[soroban_sdk::testutils::MockAuth {
+        address: &non_admin,
+        invoke: &soroban_sdk::testutils::MockAuthInvoke {
+            contract: &contract_id,
+            fn_name: "slash_curator",
+            args: (outlier.clone(), dataset_id.clone()).into_val(&env),
+            sub_invokes: &[],
+        },
+    }]);
+
+    client.slash_curator(&outlier, &dataset_id);
+}
+#[test]
+fn test_upgrade() {
+    let env = Env::default();
+    env.mock_all_auths();
+    
+    let admin = Address::generate(&env);
+    let contract_id = env.register_contract(None, QualityOracle);
+    let client = QualityOracleClient::new(&env, &contract_id);
+    
+    client.initialize(&admin);
+    
+    let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
+    let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
+    
+    client.upgrade(&wasm_hash);
+}
+
+#[test]
+#[should_panic(expected = "not initialized")]
+fn test_upgrade_unauthorized_not_initialized() {
+    let env = Env::default();
+    env.mock_all_auths();
+    
+    let contract_id = env.register_contract(None, QualityOracle);
+    let client = QualityOracleClient::new(&env, &contract_id);
+    
+    let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
+    let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
+    
+    client.upgrade(&wasm_hash);
 }
