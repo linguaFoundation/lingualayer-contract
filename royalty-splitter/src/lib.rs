@@ -2,8 +2,8 @@
 extern crate alloc;
 use alloc::format;
 use soroban_sdk::{
-    contract, contractclient, contractimpl, contracttype, symbol_short, token,
-    Address, Env, String, Vec,
+    contract, contractclient, contractimpl, contracttype, symbol_short, token, Address, Env,
+    String, Vec,
 };
 
 #[contracttype]
@@ -94,6 +94,7 @@ impl RoyaltySplitter {
         env.storage()
             .instance()
             .set(&symbol_short!("pay_cnt"), &0u32);
+        Self::bump_instance(&env);
     }
 
     /// Step 1 of admin handoff: current admin proposes a successor. The
@@ -128,6 +129,7 @@ impl RoyaltySplitter {
 
     /// Register a royalty split configuration for a dataset.
     pub fn register_split(env: Env, config: SplitConfig) {
+        Self::bump_instance(&env);
         let admin: Address = env
             .storage()
             .instance()
@@ -141,7 +143,6 @@ impl RoyaltySplitter {
             panic!("contributor shares must sum to 10000 bps");
         }
 
-        env.storage().persistent().set(&config.dataset_id, &config);
         let dataset_id = config.dataset_id.clone();
         env.storage().persistent().set(&dataset_id, &config);
         env.storage()
@@ -152,6 +153,7 @@ impl RoyaltySplitter {
     /// Execute a royalty payout for a dataset from accumulated fees.
     /// Deducts 5% protocol treasury fee then splits remainder.
     pub fn distribute(env: Env, dataset_id: String, total_amount: i128) {
+        Self::bump_instance(&env);
         let admin: Address = env
             .storage()
             .instance()
@@ -267,7 +269,12 @@ impl RoyaltySplitter {
 
         env.events().publish(
             (symbol_short!("royalty"), symbol_short!("paid")),
-            (dataset_id, total_amount, env.ledger().sequence(), quality_tier),
+            (
+                dataset_id,
+                total_amount,
+                env.ledger().sequence(),
+                quality_tier,
+            ),
         );
     }
 
@@ -303,6 +310,49 @@ impl RoyaltySplitter {
             .set(&symbol_short!("oracle"), &oracle_contract);
     }
 
+    /// Refresh the contract's own instance entry on every storage-touching
+    /// call. Instance storage holds the admin, the oracle address and the
+    /// payout counter, and if it lapses the whole
+    /// contract is archived — every record underneath it becomes unreadable
+    /// even with a perfectly fresh TTL of its own.
+    fn bump_instance(env: &Env) {
+        env.storage()
+            .instance()
+            .extend_ttl(PERSISTENT_TTL, PERSISTENT_TTL);
+    }
+
+    /// Permissionlessly extend a split configuration's storage lifetime.
+    ///
+    /// A lapsed `SplitConfig` is worse than a lapsed record elsewhere: it does
+    /// not fail closed. `distribute` reads the config to decide who gets paid,
+    /// so if it expires the payout path for that dataset stops working
+    /// entirely until someone re-registers the shares by hand — and whoever
+    /// re-registers them decides what they are. Keeping renewal open to anyone
+    /// means any contributor in the split can protect their own claim.
+    pub fn renew_split_ttl(env: Env, dataset_id: String) {
+        Self::bump_instance(&env);
+        if !env.storage().persistent().has(&dataset_id) {
+            panic!("no split config for dataset");
+        }
+        env.storage()
+            .persistent()
+            .extend_ttl(&dataset_id, PERSISTENT_TTL, PERSISTENT_TTL);
+    }
+
+    /// Permissionlessly extend a single payout receipt's storage lifetime.
+    /// Receipts are the only on-chain evidence that a distribution happened
+    /// and at what quality tier, so they outlive any one caller's interest.
+    pub fn renew_payout_ttl(env: Env, tx_count: u32) {
+        Self::bump_instance(&env);
+        let key = String::from_str(&env, &format!("pay_{}", tx_count));
+        if !env.storage().persistent().has(&key) {
+            panic!("payout record not found");
+        }
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, PERSISTENT_TTL, PERSISTENT_TTL);
+    }
+
     pub fn version(_env: Env) -> u32 {
         3
     }
@@ -324,3 +374,6 @@ impl RoyaltySplitter {
 
 #[cfg(test)]
 mod test;
+
+#[cfg(test)]
+mod ttl_test;

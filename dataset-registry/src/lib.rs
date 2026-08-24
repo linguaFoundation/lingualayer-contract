@@ -90,6 +90,7 @@ impl DatasetRegistry {
             .instance()
             .set(&symbol_short!("admin"), &admin);
         env.storage().instance().set(&symbol_short!("count"), &0u32);
+        Self::bump_instance(&env);
     }
 
     /// Step 1 of admin handoff: current admin proposes a successor. The
@@ -160,10 +161,6 @@ impl DatasetRegistry {
             panic!("dataset with this metadata hash is already registered");
         }
 
-        let total: u32 = contributors.iter().map(|c| c.share_bps).sum();
-        if total != 10000 {
-            panic!("contributor shares must sum to 10000 bps");
-        }
         Self::validate_shares(&contributors);
 
         let count: u32 = env
@@ -188,6 +185,7 @@ impl DatasetRegistry {
             commission_id,
         };
 
+        Self::bump_instance(&env);
         env.storage().persistent().set(&id, &dataset);
         env.storage().persistent().set(&hash_key, &id);
         env.storage()
@@ -413,6 +411,65 @@ impl DatasetRegistry {
         );
     }
 
+    /// Permissionlessly extend a dataset's storage lifetime.
+    ///
+    /// No auth: a dataset lapsing is a loss to every contributor and licensee
+    /// downstream, not just its owner, so anyone willing to pay the fee may
+    /// keep it alive. There is nothing to gain by calling this on someone
+    /// else's record beyond footing the bill for it.
+    ///
+    /// Renews the hash index alongside the record itself — letting
+    /// `hash_{metadata_hash}` expire while the dataset survives would leave
+    /// `dataset_id_for_hash` silently returning None for a live dataset, and
+    /// free its hash for re-registration by an unrelated one.
+    pub fn renew_dataset_ttl(env: Env, dataset_id: String) {
+        Self::bump_instance(&env);
+        let ds: Dataset = env
+            .storage()
+            .persistent()
+            .get(&dataset_id)
+            .expect("dataset not found");
+
+        env.storage()
+            .persistent()
+            .extend_ttl(&dataset_id, PERSISTENT_TTL, PERSISTENT_TTL);
+
+        let hash_key = String::from_str(&env, &format!("hash_{:?}", ds.metadata_hash));
+        if env.storage().persistent().has(&hash_key) {
+            env.storage()
+                .persistent()
+                .extend_ttl(&hash_key, PERSISTENT_TTL, PERSISTENT_TTL);
+        }
+    }
+
+    /// Permissionlessly extend a contributor's reputation entry. Reputation
+    /// only accrues on registration, so a prolific early contributor who then
+    /// goes quiet is exactly the account whose history would otherwise lapse.
+    pub fn renew_reputation_ttl(env: Env, address: Address) {
+        Self::bump_instance(&env);
+        let rep_key = String::from_str(&env, &format!("rep_{:?}", address));
+        if !env.storage().persistent().has(&rep_key) {
+            panic!("no reputation data");
+        }
+        env.storage()
+            .persistent()
+            .extend_ttl(&rep_key, PERSISTENT_TTL, PERSISTENT_TTL);
+    }
+
+    /// Refresh the contract's own instance entry (admin, dataset counter) on
+    /// every storage-touching call.
+    ///
+    /// This is the failure mode that outranks every per-record TTL: instance
+    /// storage holds the admin and the id counter, and if it lapses the whole
+    /// contract is archived — every dataset underneath it becomes unreadable
+    /// even with a perfectly fresh TTL of its own. Renewing it here means any
+    /// call that keeps a record alive keeps the contract alive too.
+    fn bump_instance(env: &Env) {
+        env.storage()
+            .instance()
+            .extend_ttl(PERSISTENT_TTL, PERSISTENT_TTL);
+    }
+
     fn load(env: &Env, dataset_id: &String) -> Dataset {
         env.storage()
             .persistent()
@@ -423,6 +480,7 @@ impl DatasetRegistry {
     /// Write a dataset back and refresh its TTL in one place, so no mutating
     /// path can persist a record and then let it expire early.
     fn save(env: &Env, dataset_id: &String, ds: &Dataset) {
+        Self::bump_instance(env);
         env.storage().persistent().set(dataset_id, ds);
         env.storage()
             .persistent()
@@ -446,3 +504,6 @@ impl DatasetRegistry {
 
 #[cfg(test)]
 mod test;
+
+#[cfg(test)]
+mod ttl_test;

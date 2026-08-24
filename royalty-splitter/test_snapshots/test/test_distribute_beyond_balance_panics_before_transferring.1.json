@@ -423,7 +423,7 @@
             },
             "ext": "v0"
           },
-          4095
+          6311999
         ]
       ],
       [
@@ -629,7 +629,7 @@
             },
             "ext": "v0"
           },
-          4095
+          6311999
         ]
       ]
     ]
@@ -1085,7 +1085,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'insufficient contract balance for distribution' from contract function 'Symbol(obj#201)'"
+                  "string": "caught panic 'insufficient contract balance for distribution' from contract function 'Symbol(obj#195)'"
                 },
                 {
                   "string": "ds_1"

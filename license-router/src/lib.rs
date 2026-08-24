@@ -9,6 +9,10 @@ use soroban_sdk::{
 /// configured, or the cross-contract call to it fails for any reason.
 const DEFAULT_ROYALTY_MULTIPLIER_BPS: i128 = 10000;
 
+/// How long persistent entries live before they can be archived:
+/// 7,776,000 ledgers ≈ 90 days at ~1s/ledger.
+const PERSISTENT_TTL: u32 = 7_776_000;
+
 /// Minimal cross-contract interface into QualityOracle — deliberately just
 /// the one method this contract needs, rather than depending on the
 /// quality-oracle crate directly. Depending on the actual contract crate
@@ -72,6 +76,7 @@ impl LicenseRouter {
         env.storage()
             .instance()
             .set(&symbol_short!("lic_cnt"), &0u32);
+        Self::bump_instance(&env);
     }
 
     /// Step 1 of admin handoff: current admin proposes a successor. The
@@ -115,6 +120,7 @@ impl LicenseRouter {
         fee_paid_stroops: i128,
     ) -> String {
         licensee.require_auth();
+        Self::bump_instance(&env);
 
         // Validate fee minimums per license type
         let min_fee: i128 = match license_type {
@@ -174,7 +180,7 @@ impl LicenseRouter {
             .set(&symbol_short!("lic_cnt"), &(count + 1));
         env.storage()
             .persistent()
-            .extend_ttl(&id, 7_776_000, 7_776_000);
+            .extend_ttl(&id, PERSISTENT_TTL, PERSISTENT_TTL);
 
         env.events().publish(
             (symbol_short!("license"), symbol_short!("issued")),
@@ -192,6 +198,7 @@ impl LicenseRouter {
 
     /// Revoke a license (admin only).
     pub fn revoke_license(env: Env, license_id: String) {
+        Self::bump_instance(&env);
         let admin: Address = env
             .storage()
             .instance()
@@ -206,6 +213,11 @@ impl LicenseRouter {
             .expect("license not found");
         license.state = LicenseState::Revoked;
         env.storage().persistent().set(&license_id, &license);
+        // A revoked license is still the record proving the revocation
+        // happened — it must not be the one entry that quietly lapses.
+        env.storage()
+            .persistent()
+            .extend_ttl(&license_id, PERSISTENT_TTL, PERSISTENT_TTL);
 
         env.events().publish(
             (symbol_short!("license"), symbol_short!("revoked")),
@@ -247,6 +259,36 @@ impl LicenseRouter {
             .set(&symbol_short!("oracle"), &oracle_contract);
     }
 
+    /// Refresh the contract's own instance entry on every storage-touching
+    /// call. Instance storage holds the admin, the registry and oracle
+    /// addresses, and the license counter, and if it lapses the whole
+    /// contract is archived — every record underneath it becomes unreadable
+    /// even with a perfectly fresh TTL of its own.
+    fn bump_instance(env: &Env) {
+        env.storage()
+            .instance()
+            .extend_ttl(PERSISTENT_TTL, PERSISTENT_TTL);
+    }
+
+    /// Permissionlessly extend a license's storage lifetime.
+    ///
+    /// Licenses are the longest-lived records in the workspace — a multi-year
+    /// commercial license outlives the 90-day TTL many times over, and nothing
+    /// in this contract mutates it in the meantime, so without a standalone
+    /// renewal entry point a valid license simply evaporates. Renewal is open
+    /// to anyone because both sides have reason to keep it alive: the licensee
+    /// to prove entitlement, the dataset's contributors to prove a fee was
+    /// paid and at what effective royalty.
+    pub fn renew_license_ttl(env: Env, license_id: String) {
+        Self::bump_instance(&env);
+        if !env.storage().persistent().has(&license_id) {
+            panic!("license not found");
+        }
+        env.storage()
+            .persistent()
+            .extend_ttl(&license_id, PERSISTENT_TTL, PERSISTENT_TTL);
+    }
+
     pub fn version(_env: Env) -> u32 {
         3
     }
@@ -268,3 +310,6 @@ impl LicenseRouter {
 
 #[cfg(test)]
 mod test;
+
+#[cfg(test)]
+mod ttl_test;
