@@ -344,6 +344,7 @@ impl DatasetRegistry {
         );
     }
 
+
     /// Admin flags an Active dataset for review — a reversible hold that
     /// freezes metadata updates without permanently retiring the record.
     pub fn flag_dataset(env: Env, dataset_id: String) {
@@ -488,6 +489,16 @@ impl DatasetRegistry {
 
     pub fn version(_env: Env) -> u32 {
         3
+    }
+
+    pub fn upgrade(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
+        let admin = Self::admin(&env);
+        admin.require_auth();
+        env.deployer().update_current_contract_wasm(new_wasm_hash.clone());
+        env.events().publish(
+            (symbol_short!("contract"), symbol_short!("upgraded")),
+            (new_wasm_hash, env.ledger().sequence()),
+        );
     }
 }
 

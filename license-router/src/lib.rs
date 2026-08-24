@@ -290,7 +290,21 @@ impl LicenseRouter {
     }
 
     pub fn version(_env: Env) -> u32 {
-        2
+        3
+    }
+
+    pub fn upgrade(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .expect("not initialized");
+        admin.require_auth();
+        env.deployer().update_current_contract_wasm(new_wasm_hash.clone());
+        env.events().publish(
+            (symbol_short!("contract"), symbol_short!("upgraded")),
+            (new_wasm_hash, env.ledger().sequence()),
+        );
     }
 }
 

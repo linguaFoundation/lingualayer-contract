@@ -5,7 +5,7 @@ members = [
     "license-router",
     "royalty-splitter",
     "quality-oracle",
-    "data-commission",
+    "data-commission", "test_data/dummy_contract",
 ]
 
 [workspace.dependencies]
