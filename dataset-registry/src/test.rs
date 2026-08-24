@@ -741,3 +741,33 @@ fn test_reputation_for_unknown_address_panics() {
 
     client.get_reputation(&Address::generate(&env));
 }
+
+#[test]
+fn test_upgrade() {
+    let env = Env::default();
+    let owner = Address::generate(&env);
+    let contract_id = env.register_contract(None, DatasetRegistry);
+    let client = DatasetRegistryClient::new(&env, &contract_id);
+    
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    client.initialize(&admin);
+    
+    let dummy_wasm = include_bytes!("../../test_data/dummy.wasm");
+    let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm.as_slice());
+    
+    client.upgrade(&wasm_hash);
+}
+
+#[test]
+#[should_panic(expected = "not initialized")]
+fn test_upgrade_unauthorized_not_initialized() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, DatasetRegistry);
+    let client = DatasetRegistryClient::new(&env, &contract_id);
+    
+    let dummy_wasm = include_bytes!("../../test_data/dummy.wasm");
+    let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm.as_slice());
+    
+    client.upgrade(&wasm_hash);
+}

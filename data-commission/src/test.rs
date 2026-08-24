@@ -359,3 +359,35 @@ fn test_cancel_after_partial_milestone_release_refunds_only_remainder() {
         400
     );
 }
+
+#[test]
+fn test_upgrade() {
+    let env = Env::default();
+    env.mock_all_auths();
+    
+    let admin = Address::generate(&env);
+    let contract_id = env.register_contract(None, DataCommission);
+    let client = DataCommissionClient::new(&env, &contract_id);
+    
+    client.initialize(&admin);
+    
+    let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
+    let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
+    
+    client.upgrade(&wasm_hash);
+}
+
+#[test]
+#[should_panic(expected = "not initialized")]
+fn test_upgrade_unauthorized_not_initialized() {
+    let env = Env::default();
+    env.mock_all_auths();
+    
+    let contract_id = env.register_contract(None, DataCommission);
+    let client = DataCommissionClient::new(&env, &contract_id);
+    
+    let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
+    let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
+    
+    client.upgrade(&wasm_hash);
+}

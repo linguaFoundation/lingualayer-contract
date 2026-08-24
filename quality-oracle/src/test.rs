@@ -329,3 +329,34 @@ fn test_slash_curator_rejects_non_admin_caller() {
 
     client.slash_curator(&outlier, &dataset_id);
 }
+#[test]
+fn test_upgrade() {
+    let env = Env::default();
+    env.mock_all_auths();
+    
+    let admin = Address::generate(&env);
+    let contract_id = env.register_contract(None, QualityOracle);
+    let client = QualityOracleClient::new(&env, &contract_id);
+    
+    client.initialize(&admin);
+    
+    let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
+    let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
+    
+    client.upgrade(&wasm_hash);
+}
+
+#[test]
+#[should_panic(expected = "not initialized")]
+fn test_upgrade_unauthorized_not_initialized() {
+    let env = Env::default();
+    env.mock_all_auths();
+    
+    let contract_id = env.register_contract(None, QualityOracle);
+    let client = QualityOracleClient::new(&env, &contract_id);
+    
+    let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
+    let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
+    
+    client.upgrade(&wasm_hash);
+}
