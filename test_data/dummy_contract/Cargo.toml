@@ -1,0 +1,10 @@
+[package]
+name = "dummy_contract"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+soroban-sdk = "21.7.7"
+
+[lib]
+crate-type = ["cdylib"]

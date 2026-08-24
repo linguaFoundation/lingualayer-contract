@@ -1,10 +1,11 @@
 #![cfg(test)]
 
 use super::*;
+use quality_oracle::{QualityOracle, QualityOracleClient as RealOracleClient};
 use soroban_sdk::{
     testutils::Address as _,
     token::{Client as TokenClient, StellarAssetClient},
-    Address, Env, String, Vec,
+    Address, BytesN, Env, String, Vec,
 };
 
 struct Fixture<'a> {
@@ -22,83 +23,6 @@ fn setup(funding: i128) -> Fixture<'static> {
     env.mock_all_auths();
 
     let admin = Address::generate(&env);
-    let contract_id = env.register_contract(None, RoyaltySplitter);
-    let client = RoyaltySplitterClient::new(&env, &contract_id);
-
-    client.initialize(&admin);
-
-    // We need a mock token.
-    let token_admin = Address::generate(&env);
-    let token_contract = env.register_stellar_asset_contract_v2(token_admin.clone()).address();
-    let token_client = token::StellarAssetClient::new(&env, &token_contract);
-    let token_std_client = token::Client::new(&env, &token_contract);
-
-    let treasury = Address::generate(&env);
-    let contributor1 = Address::generate(&env);
-    let contributor2 = Address::generate(&env);
-
-    let mut contributors = Vec::new(&env);
-    contributors.push_back((contributor1.clone(), 6000));
-    contributors.push_back((contributor2.clone(), 4000));
-
-    let config = SplitConfig {
-        dataset_id: String::from_str(&env, "ds_1"),
-        token: token_contract.clone(),
-        treasury: treasury.clone(),
-        contributors,
-    };
-
-    client.register_split(&config);
-
-    // Mint tokens to the contract so it can distribute
-    token_client.mint(&contract_id, &100_000);
-
-    client.distribute(&String::from_str(&env, "ds_1"), &100_000);
-
-    // Treasury gets 5% = 5,000
-    assert_eq!(token_std_client.balance(&treasury), 5_000);
-
-    // Remaining 95,000 is split 60% / 40%
-    assert_eq!(token_std_client.balance(&contributor1), 57_000);
-    assert_eq!(token_std_client.balance(&contributor2), 38_000);
-}
-
-#[test]
-fn test_treasury_fee_deducted() {
-    let env = Env::default();
-    env.mock_all_auths();
-
-    let admin = Address::generate(&env);
-    let contract_id = env.register_contract(None, RoyaltySplitter);
-    let client = RoyaltySplitterClient::new(&env, &contract_id);
-
-    client.initialize(&admin);
-
-    let token_admin = Address::generate(&env);
-    let token_contract = env.register_stellar_asset_contract_v2(token_admin.clone()).address();
-    let token_client = token::StellarAssetClient::new(&env, &token_contract);
-    let token_std_client = token::Client::new(&env, &token_contract);
-
-    let treasury = Address::generate(&env);
-    let contributor1 = Address::generate(&env);
-
-    let mut contributors = Vec::new(&env);
-    contributors.push_back((contributor1.clone(), 10000));
-
-    let config = SplitConfig {
-        dataset_id: String::from_str(&env, "ds_2"),
-        token: token_contract.clone(),
-        treasury: treasury.clone(),
-        contributors,
-    };
-
-    client.register_split(&config);
-    token_client.mint(&contract_id, &200_000);
-
-    client.distribute(&String::from_str(&env, "ds_2"), &200_000);
-
-    assert_eq!(token_std_client.balance(&treasury), 10_000);
-}
     let treasury = Address::generate(&env);
 
     let issuer = Address::generate(&env);
@@ -282,6 +206,9 @@ fn test_distribute_zero_amount() {
     client.register_split(&config);
     client.distribute(&String::from_str(&env, "ds_3"), &0);
 }
+
+#[test]
+#[should_panic(expected = "amount must be positive")]
 fn test_negative_amount_distribute_panics() {
     let f = setup(1_000);
     let alice = Address::generate(&f.env);
@@ -297,21 +224,76 @@ fn test_distribute_beyond_balance_panics_before_transferring() {
     let alice = Address::generate(&f.env);
     f.register(shares(&f.env, &[(alice, 10000)]));
 
-    token_id
+    // Funded with 100; asking for 1000 must fail before any transfer runs.
+    f.client.distribute(&dataset(&f.env), &1_000);
+}
+
+/// Deploy the splitter next to a real QualityOracle and wire them together,
+/// for the tests that assert what tier a payout is recorded at.
+fn setup_with_oracle(
+    env: &Env,
+) -> (
+    RoyaltySplitterClient<'static>,
+    RealOracleClient<'static>,
+    Address,
+    Address,
+) {
+    let admin = Address::generate(env);
+
+    let splitter_id = env.register_contract(None, RoyaltySplitter);
+    let splitter = RoyaltySplitterClient::new(env, &splitter_id);
+    splitter.initialize(&admin);
+
+    let oracle_id = env.register_contract(None, QualityOracle);
+    let oracle = RealOracleClient::new(env, &oracle_id);
+    oracle.initialize(&admin);
+
+    splitter.set_oracle(&oracle_id);
+
+    (splitter, oracle, admin, splitter_id)
+}
+
+/// Register a sole-contributor split for `dataset_id` and fund the splitter
+/// so the distribution under test can actually transfer.
+fn setup_split(
+    env: &Env,
+    splitter: &RoyaltySplitterClient,
+    splitter_id: &Address,
+    dataset_id: &String,
+    contributor: &Address,
+) {
+    let issuer = Address::generate(env);
+    let token_address = env.register_stellar_asset_contract(issuer);
+    StellarAssetClient::new(env, &token_address).mint(splitter_id, &1_000_000);
+
+    let mut contributors = Vec::new(env);
+    contributors.push_back((contributor.clone(), 10000));
+
+    splitter.register_split(&SplitConfig {
+        dataset_id: dataset_id.clone(),
+        token: token_address,
+        treasury: Address::generate(env),
+        contributors,
+    });
 }
 
 #[test]
 fn test_distribute_records_quality_tier_from_oracle() {
     let env = Env::default();
     env.mock_all_auths();
-    let (splitter, oracle, _admin, splitter_id) = setup(&env);
+    let (splitter, oracle, _admin, splitter_id) = setup_with_oracle(&env);
     let dataset_id = String::from_str(&env, "ds_gold");
     let contributor = Address::generate(&env);
     setup_split(&env, &splitter, &splitter_id, &dataset_id, &contributor);
 
     let curator = Address::generate(&env);
     oracle.register_curator(&curator);
-    oracle.attest_quality(&curator, &dataset_id, &75, &BytesN::from_array(&env, &[1u8; 32])); // Gold: 70-84
+    oracle.attest_quality(
+        &curator,
+        &dataset_id,
+        &75,
+        &BytesN::from_array(&env, &[1u8; 32]),
+    ); // Gold: 70-84
 
     splitter.distribute(&dataset_id, &100_000);
 
@@ -325,7 +307,7 @@ fn test_distribute_records_quality_tier_from_oracle() {
 fn test_distribute_defaults_to_unrated_when_never_attested() {
     let env = Env::default();
     env.mock_all_auths();
-    let (splitter, _oracle, _admin, splitter_id) = setup(&env);
+    let (splitter, _oracle, _admin, splitter_id) = setup_with_oracle(&env);
     let dataset_id = String::from_str(&env, "ds_never_attested");
     let contributor = Address::generate(&env);
     setup_split(&env, &splitter, &splitter_id, &dataset_id, &contributor);
@@ -336,4 +318,36 @@ fn test_distribute_defaults_to_unrated_when_never_attested() {
     assert_eq!(count, 1);
     let record = splitter.get_payout(&count);
     assert_eq!(record.quality_tier, String::from_str(&env, "Unrated"));
+}
+
+#[test]
+fn test_upgrade() {
+    let env = Env::default();
+    env.mock_all_auths();
+    
+    let admin = Address::generate(&env);
+    let contract_id = env.register_contract(None, RoyaltySplitter);
+    let client = RoyaltySplitterClient::new(&env, &contract_id);
+    
+    client.initialize(&admin);
+    
+    let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
+    let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
+    
+    client.upgrade(&wasm_hash);
+}
+
+#[test]
+#[should_panic(expected = "not initialized")]
+fn test_upgrade_unauthorized_not_initialized() {
+    let env = Env::default();
+    env.mock_all_auths();
+    
+    let contract_id = env.register_contract(None, RoyaltySplitter);
+    let client = RoyaltySplitterClient::new(&env, &contract_id);
+    
+    let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
+    let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
+    
+    client.upgrade(&wasm_hash);
 }

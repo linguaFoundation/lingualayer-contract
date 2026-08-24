@@ -93,6 +93,9 @@
               "args": [
                 {
                   "string": "ds_1"
+                },
+                {
+                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
                 }
               ]
             }
@@ -737,7 +740,14 @@
               }
             ],
             "data": {
-              "string": "ds_1"
+              "vec": [
+                {
+                  "string": "ds_1"
+                },
+                {
+                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
+                }
+              ]
             }
           }
         }

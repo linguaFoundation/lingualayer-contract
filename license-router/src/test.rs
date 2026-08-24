@@ -210,3 +210,37 @@ fn test_revoke_license() {
     let license = router.get_license(&id);
     assert_eq!(license.state, LicenseState::Revoked);
 }
+
+#[test]
+fn test_upgrade() {
+    let env = Env::default();
+    env.mock_all_auths();
+    
+    let admin = Address::generate(&env);
+    let contract_id = env.register_contract(None, LicenseRouter);
+    let client = LicenseRouterClient::new(&env, &contract_id);
+    
+    let dataset_registry = Address::generate(&env);
+    
+    client.initialize(&admin, &dataset_registry);
+    
+    let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
+    let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
+    
+    client.upgrade(&wasm_hash);
+}
+
+#[test]
+#[should_panic(expected = "not initialized")]
+fn test_upgrade_unauthorized_not_initialized() {
+    let env = Env::default();
+    env.mock_all_auths();
+    
+    let contract_id = env.register_contract(None, LicenseRouter);
+    let client = LicenseRouterClient::new(&env, &contract_id);
+    
+    let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
+    let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
+    
+    client.upgrade(&wasm_hash);
+}

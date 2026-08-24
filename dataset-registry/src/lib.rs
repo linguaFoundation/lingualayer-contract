@@ -195,10 +195,6 @@ impl DatasetRegistry {
             .set(&symbol_short!("count"), &(count + 1));
         env.storage()
             .persistent()
-            .extend_ttl(&id, 7_776_000, 7_776_000);
-        env.storage()
-            .persistent()
-            .extend_ttl(&hash_key, 7_776_000, 7_776_000);
             .extend_ttl(&id, PERSISTENT_TTL, PERSISTENT_TTL);
         env.storage()
             .persistent()
@@ -268,7 +264,6 @@ impl DatasetRegistry {
         env.storage().persistent().set(&rep_key, &rep);
         env.storage()
             .persistent()
-            .extend_ttl(&rep_key, 7_776_000, 7_776_000);
             .extend_ttl(&rep_key, PERSISTENT_TTL, PERSISTENT_TTL);
     }
 
@@ -308,11 +303,6 @@ impl DatasetRegistry {
     }
 
     pub fn update_metadata(env: Env, dataset_id: String, new_hash: soroban_sdk::BytesN<32>) {
-        let mut ds: Dataset = env
-            .storage()
-            .persistent()
-            .get(&dataset_id)
-            .expect("dataset not found");
         let mut ds = Self::load(&env, &dataset_id);
         ds.owner.require_auth();
 
@@ -356,13 +346,7 @@ impl DatasetRegistry {
         );
     }
 
-    pub fn deprecate_dataset(env: Env, dataset_id: String) {
-        let mut ds: Dataset = env
-            .storage()
-            .persistent()
-            .get(&dataset_id)
-            .expect("dataset not found");
-        ds.owner.require_auth();
+
     /// Admin flags an Active dataset for review — a reversible hold that
     /// freezes metadata updates without permanently retiring the record.
     pub fn flag_dataset(env: Env, dataset_id: String) {
@@ -447,6 +431,16 @@ impl DatasetRegistry {
 
     pub fn version(_env: Env) -> u32 {
         3
+    }
+
+    pub fn upgrade(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
+        let admin = Self::admin(&env);
+        admin.require_auth();
+        env.deployer().update_current_contract_wasm(new_wasm_hash.clone());
+        env.events().publish(
+            (symbol_short!("contract"), symbol_short!("upgraded")),
+            (new_wasm_hash, env.ledger().sequence()),
+        );
     }
 }
 

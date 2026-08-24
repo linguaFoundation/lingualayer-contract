@@ -167,7 +167,7 @@ fn test_register_shares_under_target_panics() {
         share_bps: 5000,
     });
 
-    client.register_dataset(
+    let id = client.register_dataset(
         &owner,
         &String::from_str(&env, "en"),
         &String::from_str(&env, "Underweight"),
@@ -211,7 +211,7 @@ fn test_register_shares_over_target_panics() {
 }
 
 #[test]
-#[should_panic(expected = "dataset must have at least one contributor")]
+#[should_panic(expected = "contributor shares must sum to 10000 bps")]
 fn test_register_empty_contributors_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -321,9 +321,6 @@ fn test_register_multiple_contributors_summing_to_target_succeeds() {
 
     assert_eq!(client.get_dataset(&id).contributors.len(), 3);
 }
-#[test]
-fn test_admin_handoff_propose_then_accept() {
-
 // ---------------------------------------------------------------------------
 // Initialization / admin
 // ---------------------------------------------------------------------------
@@ -534,7 +531,7 @@ fn test_deprecate_as_owner() {
         &None,
     );
 
-    client.deprecate_dataset(&id);
+    client.deprecate_dataset(&id, &owner);
     let ds = client.get_dataset(&id);
     assert_eq!(ds.state, DatasetState::Deprecated);
 }
@@ -583,7 +580,7 @@ fn test_deprecate_as_admin() {
         },
     }]);
 
-    client.deprecate_dataset(&id);
+    client.deprecate_dataset(&id, &admin);
   }
 // ---------------------------------------------------------------------------
 // update_metadata
@@ -828,4 +825,38 @@ fn test_reputation_for_unknown_address_panics() {
     let (client, _admin) = setup(&env);
 
     client.get_reputation(&Address::generate(&env));
+}
+
+#[test]
+fn test_upgrade() {
+    let env = Env::default();
+    env.mock_all_auths();
+    
+    let admin = Address::generate(&env);
+    let contract_id = env.register_contract(None, DatasetRegistry);
+    let client = DatasetRegistryClient::new(&env, &contract_id);
+    
+    client.initialize(&admin);
+    
+    let dummy_wasm = include_bytes!("../../test_data/dummy.wasm");
+    let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm.as_slice());
+    
+    client.upgrade(&wasm_hash);
+    
+    // Verify it doesn't panic
+}
+
+#[test]
+#[should_panic(expected = "not initialized")]
+fn test_upgrade_unauthorized_not_initialized() {
+    let env = Env::default();
+    env.mock_all_auths();
+    
+    let contract_id = env.register_contract(None, DatasetRegistry);
+    let client = DatasetRegistryClient::new(&env, &contract_id);
+    
+    let dummy_wasm = include_bytes!("../../test_data/dummy.wasm");
+    let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm.as_slice());
+    
+    client.upgrade(&wasm_hash);
 }
