@@ -2,9 +2,24 @@
 extern crate alloc;
 use alloc::format;
 use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short,
+    contract, contractclient, contractimpl, contracttype, symbol_short,
     Address, Env, String, Vec,
 };
+
+/// Default royalty multiplier (1x, in bps) used when no oracle is
+/// configured, or the cross-contract call to it fails for any reason.
+const DEFAULT_ROYALTY_MULTIPLIER_BPS: i128 = 10000;
+
+/// Minimal cross-contract interface into QualityOracle — deliberately just
+/// the one method this contract needs, rather than depending on the
+/// quality-oracle crate directly. Depending on the actual contract crate
+/// would pull its own #[contractimpl]-generated WASM exports (initialize,
+/// version, ...) into this contract's binary, colliding at link time with
+/// license-router's own exports of the same names.
+#[contractclient(name = "QualityOracleClient")]
+pub trait QualityOracleInterface {
+    fn royalty_multiplier_bps(env: Env, dataset_id: String) -> u32;
+}
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -31,7 +46,8 @@ pub struct License {
     pub licensee: Address,
     pub license_type: LicenseType,
     pub state: LicenseState,
-    pub fee_paid_stroops: i128, // USDC stroops
+    pub fee_paid_stroops: i128, // USDC stroops, as actually paid by the licensee
+    pub effective_royalty_stroops: i128, // fee_paid_stroops adjusted by the dataset's QualityOracle multiplier — the basis royalty-splitter distributes from
     pub issued_ledger: u32,
     pub expiry_ledger: u32,
     pub region_code: String, // ISO 3166-1 alpha-2 or "GLOBAL"
@@ -51,6 +67,34 @@ impl LicenseRouter {
         env.storage().instance().set(&symbol_short!("admin"), &admin);
         env.storage().instance().set(&symbol_short!("registry"), &registry_contract);
         env.storage().instance().set(&symbol_short!("lic_cnt"), &0u32);
+    }
+
+    /// Step 1 of admin handoff: current admin proposes a successor. The
+    /// proposal must be accepted by the new admin via `accept_admin` before
+    /// control actually transfers — a compromised key alone can't hand
+    /// itself off without the new admin's own signature.
+    pub fn propose_admin(env: Env, new_admin: Address) {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .expect("not initialized");
+        admin.require_auth();
+        env.storage()
+            .instance()
+            .set(&symbol_short!("proposed"), &new_admin);
+    }
+
+    /// Step 2: the proposed admin accepts, completing the handoff.
+    pub fn accept_admin(env: Env) {
+        let proposed: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("proposed"))
+            .expect("no admin proposal pending");
+        proposed.require_auth();
+        env.storage().instance().set(&symbol_short!("admin"), &proposed);
+        env.storage().instance().remove(&symbol_short!("proposed"));
     }
 
     /// Issue a new license for a dataset. Caller pays fee_paid_stroops.
@@ -76,6 +120,26 @@ impl LicenseRouter {
             panic!("insufficient license fee");
         }
 
+        // Apply the dataset's QualityOracle royalty multiplier to the paid
+        // fee. No oracle configured, or the cross-contract call failing for
+        // any reason (dataset never attested, oracle not yet deployed,
+        // etc.), degrades gracefully to 1x rather than blocking licensing.
+        let multiplier: i128 = match env
+            .storage()
+            .instance()
+            .get::<_, Address>(&symbol_short!("oracle"))
+        {
+            Some(oracle_contract) => {
+                let oracle = QualityOracleClient::new(&env, &oracle_contract);
+                match oracle.try_royalty_multiplier_bps(&dataset_id) {
+                    Ok(Ok(bps)) => bps as i128,
+                    _ => DEFAULT_ROYALTY_MULTIPLIER_BPS,
+                }
+            }
+            None => DEFAULT_ROYALTY_MULTIPLIER_BPS,
+        };
+        let effective_royalty_stroops = fee_paid_stroops * multiplier / 10000;
+
         let count: u32 = env
             .storage()
             .instance()
@@ -91,6 +155,7 @@ impl LicenseRouter {
             license_type,
             state: LicenseState::Active,
             fee_paid_stroops,
+            effective_royalty_stroops,
             issued_ledger: current_ledger,
             expiry_ledger: current_ledger + duration_ledgers,
             region_code,
@@ -106,7 +171,7 @@ impl LicenseRouter {
 
         env.events().publish(
             (symbol_short!("license"), symbol_short!("issued")),
-            (id.clone(), dataset_id, licensee, fee_paid_stroops),
+            (id.clone(), dataset_id, licensee, fee_paid_stroops, effective_royalty_stroops),
         );
 
         id
@@ -155,7 +220,24 @@ impl LicenseRouter {
             .expect("license not found")
     }
 
+    /// Configure (or update) the QualityOracle contract used to look up
+    /// each dataset's royalty multiplier in `issue_license`. Admin only.
+    pub fn set_oracle(env: Env, oracle_contract: Address) {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .expect("not initialized");
+        admin.require_auth();
+        env.storage()
+            .instance()
+            .set(&symbol_short!("oracle"), &oracle_contract);
+    }
+
     pub fn version(_env: Env) -> u32 {
         2
     }
 }
+
+#[cfg(test)]
+mod test;

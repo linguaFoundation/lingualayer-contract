@@ -58,6 +58,34 @@ impl QualityOracle {
         env.storage().instance().set(&symbol_short!("cur_cnt"), &0u32);
     }
 
+    /// Step 1 of admin handoff: current admin proposes a successor. The
+    /// proposal must be accepted by the new admin via `accept_admin` before
+    /// control actually transfers — a compromised key alone can't hand
+    /// itself off without the new admin's own signature.
+    pub fn propose_admin(env: Env, new_admin: Address) {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .expect("not initialized");
+        admin.require_auth();
+        env.storage()
+            .instance()
+            .set(&symbol_short!("proposed"), &new_admin);
+    }
+
+    /// Step 2: the proposed admin accepts, completing the handoff.
+    pub fn accept_admin(env: Env) {
+        let proposed: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("proposed"))
+            .expect("no admin proposal pending");
+        proposed.require_auth();
+        env.storage().instance().set(&symbol_short!("admin"), &proposed);
+        env.storage().instance().remove(&symbol_short!("proposed"));
+    }
+
     /// Register a curator by staking XLM. Stakers can be slashed for bad scores.
     pub fn register_curator(env: Env, curator: Address) {
         curator.require_auth();
@@ -144,6 +172,17 @@ impl QualityOracle {
             .expect("no quality data for dataset")
     }
 
+    /// Extend a dataset's quality-aggregate TTL. Permissionless — anyone
+    /// may call this to keep a dataset's quality record (and the royalty
+    /// tier it feeds into) from expiring off persistent storage.
+    pub fn renew_quality_ttl(env: Env, dataset_id: String) {
+        let agg_key = String::from_str(&env, &format!("agg_{:?}", dataset_id));
+        if !env.storage().persistent().has(&agg_key) {
+            panic!("no quality data for dataset");
+        }
+        env.storage().persistent().extend_ttl(&agg_key, 7_776_000, 7_776_000);
+    }
+
     /// Compute royalty multiplier (bps) based on quality tier.
     /// Platinum = 150% (1.5x), Gold = 125%, Silver = 100%, Bronze = 75%
     pub fn royalty_multiplier_bps(env: Env, dataset_id: String) -> u32 {
@@ -172,3 +211,6 @@ impl QualityOracle {
 
     pub fn version(_env: Env) -> u32 { 1 }
 }
+
+#[cfg(test)]
+mod test;
