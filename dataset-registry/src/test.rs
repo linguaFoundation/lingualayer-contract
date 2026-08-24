@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String, Vec};
+use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, IntoVal, String, Vec};
 
 /// Register a contract with a fresh env and an initialized admin, returning
 /// the pieces every test needs. Auth is mocked up front because
@@ -177,6 +177,8 @@ fn test_register_shares_under_target_panics() {
         &3600,
         &None,
     );
+
+    assert_eq!(id, String::from_str(&env, "ds_1"));
 }
 
 #[test]
@@ -319,6 +321,8 @@ fn test_register_multiple_contributors_summing_to_target_succeeds() {
 
     assert_eq!(client.get_dataset(&id).contributors.len(), 3);
 }
+#[test]
+fn test_admin_handoff_propose_then_accept() {
 
 // ---------------------------------------------------------------------------
 // Initialization / admin
@@ -367,6 +371,220 @@ fn test_accept_admin_without_proposal_panics() {
     client.accept_admin();
 }
 
+#[test]
+fn test_register_dataset_valid_shares() {
+    let env = Env::default();
+    let owner = Address::generate(&env);
+    let contract_id = env.register_contract(None, DatasetRegistry);
+    let client = DatasetRegistryClient::new(&env, &contract_id);
+
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    client.initialize(&admin);
+
+    let mut hash_bytes = [0u8; 32];
+    hash_bytes[0] = 2;
+    let valid_hash = BytesN::from_array(&env, &hash_bytes);
+
+    let mut contributors = Vec::new(&env);
+    contributors.push_back(ContributorShare {
+        address: owner.clone(),
+        share_bps: 10000,
+    });
+
+    let id = client.register_dataset(
+        &owner,
+        &String::from_str(&env, "en"),
+        &String::from_str(&env, "Test Dataset"),
+        &valid_hash,
+        &contributors,
+        &100,
+        &3600,
+        &None,
+    );
+    assert_eq!(id, String::from_str(&env, "ds_1"));
+}
+
+#[test]
+#[should_panic(expected = "contributor shares must sum to 10000 bps")]
+fn test_register_dataset_invalid_shares() {
+    let env = Env::default();
+    let owner = Address::generate(&env);
+    let contract_id = env.register_contract(None, DatasetRegistry);
+    let client = DatasetRegistryClient::new(&env, &contract_id);
+
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    client.initialize(&admin);
+
+    let mut hash_bytes = [0u8; 32];
+    hash_bytes[0] = 3;
+    let valid_hash = BytesN::from_array(&env, &hash_bytes);
+
+    let mut contributors = Vec::new(&env);
+    contributors.push_back(ContributorShare {
+        address: owner.clone(),
+        share_bps: 9999, // Invalid
+    });
+
+    client.register_dataset(
+        &owner,
+        &String::from_str(&env, "en"),
+        &String::from_str(&env, "Test Dataset"),
+        &valid_hash,
+        &contributors,
+        &100,
+        &3600,
+        &None,
+    );
+}
+
+#[test]
+#[should_panic(expected = "already initialized")]
+fn test_double_initialize() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, DatasetRegistry);
+    let client = DatasetRegistryClient::new(&env, &contract_id);
+
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    client.initialize(&admin);
+    client.initialize(&admin);
+}
+
+#[test]
+#[should_panic]
+fn test_unauthorized_update_metadata() {
+    let env = Env::default();
+    let owner = Address::generate(&env);
+    let contract_id = env.register_contract(None, DatasetRegistry);
+    let client = DatasetRegistryClient::new(&env, &contract_id);
+
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    client.initialize(&admin);
+
+    let mut hash_bytes = [0u8; 32];
+    hash_bytes[0] = 4;
+    let valid_hash = BytesN::from_array(&env, &hash_bytes);
+
+    let mut contributors = Vec::new(&env);
+    contributors.push_back(ContributorShare {
+        address: owner.clone(),
+        share_bps: 10000,
+    });
+
+    let id = client.register_dataset(
+        &owner,
+        &String::from_str(&env, "en"),
+        &String::from_str(&env, "Test"),
+        &valid_hash,
+        &contributors,
+        &100,
+        &3600,
+        &None,
+    );
+
+    // Try to update with non-owner
+    let non_owner = Address::generate(&env);
+    // mock_auths doesn't strictly prevent the call unless we do specific auth mocking,
+    // but we can just use set_auths to mock non_owner only.
+    env.mock_auths(&[soroban_sdk::testutils::MockAuth {
+        address: &non_owner,
+        invoke: &soroban_sdk::testutils::MockAuthInvoke {
+            contract: &contract_id,
+            fn_name: "update_metadata",
+            args: (id.clone(), valid_hash.clone()).into_val(&env),
+            sub_invokes: &[],
+        },
+    }]);
+
+    client.update_metadata(&id, &valid_hash);
+}
+
+#[test]
+fn test_deprecate_as_owner() {
+    let env = Env::default();
+    let owner = Address::generate(&env);
+    let contract_id = env.register_contract(None, DatasetRegistry);
+    let client = DatasetRegistryClient::new(&env, &contract_id);
+
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    client.initialize(&admin);
+
+    let mut hash_bytes = [0u8; 32];
+    hash_bytes[0] = 6;
+    let valid_hash = BytesN::from_array(&env, &hash_bytes);
+
+    let mut contributors = Vec::new(&env);
+    contributors.push_back(ContributorShare {
+        address: owner.clone(),
+        share_bps: 10000,
+    });
+
+    let id = client.register_dataset(
+        &owner,
+        &String::from_str(&env, "en"),
+        &String::from_str(&env, "Test"),
+        &valid_hash,
+        &contributors,
+        &100,
+        &3600,
+        &None,
+    );
+
+    client.deprecate_dataset(&id);
+    let ds = client.get_dataset(&id);
+    assert_eq!(ds.state, DatasetState::Deprecated);
+}
+
+#[test]
+#[should_panic]
+fn test_deprecate_as_admin() {
+    let env = Env::default();
+    let owner = Address::generate(&env);
+    let contract_id = env.register_contract(None, DatasetRegistry);
+    let client = DatasetRegistryClient::new(&env, &contract_id);
+
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    client.initialize(&admin);
+
+    let mut hash_bytes = [0u8; 32];
+    hash_bytes[0] = 7;
+    let valid_hash = BytesN::from_array(&env, &hash_bytes);
+
+    let mut contributors = Vec::new(&env);
+    contributors.push_back(ContributorShare {
+        address: owner.clone(),
+        share_bps: 10000,
+    });
+
+    let id = client.register_dataset(
+        &owner,
+        &String::from_str(&env, "en"),
+        &String::from_str(&env, "Test"),
+        &valid_hash,
+        &contributors,
+        &100,
+        &3600,
+        &None,
+    );
+
+    // Mock admin auth only
+    env.mock_auths(&[soroban_sdk::testutils::MockAuth {
+        address: &admin,
+        invoke: &soroban_sdk::testutils::MockAuthInvoke {
+            contract: &contract_id,
+            fn_name: "deprecate_dataset",
+            args: (id.clone(),).into_val(&env),
+            sub_invokes: &[],
+        },
+    }]);
+
+    client.deprecate_dataset(&id);
+  }
 // ---------------------------------------------------------------------------
 // update_metadata
 // ---------------------------------------------------------------------------

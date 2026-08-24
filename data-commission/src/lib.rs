@@ -1,9 +1,9 @@
 #![no_std]
+#![allow(clippy::too_many_arguments)]
 extern crate alloc;
 use alloc::format;
 use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short, token,
-    Address, Env, String, Vec,
+    contract, contractimpl, contracttype, symbol_short, token, Address, Env, String, Vec,
 };
 
 /// A single tranche of a commission's bounty, released independently once
@@ -32,19 +32,19 @@ pub enum CommissionState {
 #[derive(Clone, Debug)]
 pub struct Commission {
     pub id: String,
-    pub commissioner: Address,        // AI company posting the bounty
-    pub language_code: String,        // ISO 639-3 target language
+    pub commissioner: Address, // AI company posting the bounty
+    pub language_code: String, // ISO 639-3 target language
     pub description_hash: soroban_sdk::BytesN<32>, // IPFS requirements doc
-    pub bounty_token: Address,        // USDC SAC address
-    pub bounty_amount: i128,          // Total bounty in stroops
+    pub bounty_token: Address, // USDC SAC address
+    pub bounty_amount: i128,   // Total bounty in stroops
     // Empty until set_milestones is called; while empty, fulfil_commission
     // releases the full bounty_amount in one shot (unchanged legacy path).
     pub milestones: Vec<Milestone>,
-    pub min_sample_count: u32,        // Minimum audio samples required
-    pub min_duration_seconds: u32,    // Minimum total duration
+    pub min_sample_count: u32,     // Minimum audio samples required
+    pub min_duration_seconds: u32, // Minimum total duration
     pub deadline_ledger: u32,
     pub state: CommissionState,
-    pub fulfiller: Option<Address>,   // Dataset contributor who won
+    pub fulfiller: Option<Address>, // Dataset contributor who won
     pub fulfilled_dataset_id: Option<String>,
 }
 
@@ -60,8 +60,12 @@ impl DataCommission {
             panic!("already initialized");
         }
         admin.require_auth();
-        env.storage().instance().set(&symbol_short!("admin"), &admin);
-        env.storage().instance().set(&symbol_short!("com_cnt"), &0u32);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("admin"), &admin);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("com_cnt"), &0u32);
     }
 
     /// Step 1 of admin handoff: current admin proposes a successor. The
@@ -88,7 +92,9 @@ impl DataCommission {
             .get(&symbol_short!("proposed"))
             .expect("no admin proposal pending");
         proposed.require_auth();
-        env.storage().instance().set(&symbol_short!("admin"), &proposed);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("admin"), &proposed);
         env.storage().instance().remove(&symbol_short!("proposed"));
     }
 
@@ -110,16 +116,26 @@ impl DataCommission {
             panic!("metadata hash cannot be zero");
         }
 
-        if bounty_amount <= 0 { panic!("bounty must be positive"); }
+        if bounty_amount <= 0 {
+            panic!("bounty must be positive");
+        }
         if deadline_ledger <= env.ledger().sequence() {
             panic!("deadline must be in the future");
         }
 
         // Transfer bounty into contract escrow
         let tok = token::Client::new(&env, &bounty_token);
-        tok.transfer(&commissioner, &env.current_contract_address(), &bounty_amount);
+        tok.transfer(
+            &commissioner,
+            &env.current_contract_address(),
+            &bounty_amount,
+        );
 
-        let cnt: u32 = env.storage().instance().get(&symbol_short!("com_cnt")).unwrap_or(0);
+        let cnt: u32 = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("com_cnt"))
+            .unwrap_or(0);
         let id = String::from_str(&env, &format!("com_{}", cnt + 1));
 
         let commission = Commission {
@@ -139,8 +155,12 @@ impl DataCommission {
         };
 
         env.storage().persistent().set(&id, &commission);
-        env.storage().persistent().extend_ttl(&id, 7_776_000, 7_776_000);
-        env.storage().instance().set(&symbol_short!("com_cnt"), &(cnt + 1));
+        env.storage()
+            .persistent()
+            .extend_ttl(&id, 7_776_000, 7_776_000);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("com_cnt"), &(cnt + 1));
 
         env.events().publish(
             (symbol_short!("comm"), symbol_short!("posted")),
@@ -157,12 +177,16 @@ impl DataCommission {
         fulfiller: Address,
         dataset_id: String,
     ) {
-        let admin: Address = env.storage().instance()
+        let admin: Address = env
+            .storage()
+            .instance()
             .get(&symbol_short!("admin"))
             .expect("not initialized");
         admin.require_auth();
 
-        let mut comm: Commission = env.storage().persistent()
+        let mut comm: Commission = env
+            .storage()
+            .persistent()
             .get(&commission_id)
             .expect("commission not found");
 
@@ -180,7 +204,11 @@ impl DataCommission {
             // Legacy path: no milestones were set, release the full bounty
             // immediately, exactly as before milestone support existed.
             let tok = token::Client::new(&env, &comm.bounty_token);
-            tok.transfer(&env.current_contract_address(), &fulfiller, &comm.bounty_amount);
+            tok.transfer(
+                &env.current_contract_address(),
+                &fulfiller,
+                &comm.bounty_amount,
+            );
             comm.state = CommissionState::Fulfilled;
         }
         // Milestone path: state stays Open and funds stay in escrow until
@@ -197,7 +225,9 @@ impl DataCommission {
 
     /// Cancel an expired commission and refund the commissioner.
     pub fn cancel_commission(env: Env, commission_id: String) {
-        let mut comm: Commission = env.storage().persistent()
+        let mut comm: Commission = env
+            .storage()
+            .persistent()
             .get(&commission_id)
             .expect("commission not found");
 
@@ -213,11 +243,20 @@ impl DataCommission {
         // Refund whatever is still held in escrow — for a milestone
         // commission that's partially released, that's the bounty minus
         // whatever tranches already paid out, not the original total.
-        let released: i128 = comm.milestones.iter().filter(|m| m.released).map(|m| m.amount).sum();
+        let released: i128 = comm
+            .milestones
+            .iter()
+            .filter(|m| m.released)
+            .map(|m| m.amount)
+            .sum();
         let remaining = comm.bounty_amount - released;
         if remaining > 0 {
             let tok = token::Client::new(&env, &comm.bounty_token);
-            tok.transfer(&env.current_contract_address(), &comm.commissioner, &remaining);
+            tok.transfer(
+                &env.current_contract_address(),
+                &comm.commissioner,
+                &remaining,
+            );
         }
 
         comm.state = CommissionState::Cancelled;
@@ -233,7 +272,9 @@ impl DataCommission {
     /// Must be called before fulfil_commission — once a fulfiller is
     /// assigned, the milestone set for that commission is locked in.
     pub fn set_milestones(env: Env, commission_id: String, milestones: Vec<Milestone>) {
-        let mut comm: Commission = env.storage().persistent()
+        let mut comm: Commission = env
+            .storage()
+            .persistent()
             .get(&commission_id)
             .expect("commission not found");
 
@@ -275,31 +316,45 @@ impl DataCommission {
     /// verified. The final milestone's release also marks the commission
     /// Fulfilled.
     pub fn release_milestone(env: Env, commission_id: String, milestone_index: u32) {
-        let admin: Address = env.storage().instance()
+        let admin: Address = env
+            .storage()
+            .instance()
             .get(&symbol_short!("admin"))
             .expect("not initialized");
         admin.require_auth();
 
-        let mut comm: Commission = env.storage().persistent()
+        let mut comm: Commission = env
+            .storage()
+            .persistent()
             .get(&commission_id)
             .expect("commission not found");
 
         if comm.state != CommissionState::Open {
             panic!("commission not open");
         }
-        let fulfiller = comm.fulfiller.clone().expect("commission has no fulfiller yet");
+        let fulfiller = comm
+            .fulfiller
+            .clone()
+            .expect("commission has no fulfiller yet");
 
         let idx = milestone_index as usize;
         if idx >= comm.milestones.len() as usize {
             panic!("milestone index out of range");
         }
-        let mut milestone = comm.milestones.get(milestone_index).expect("milestone index out of range");
+        let mut milestone = comm
+            .milestones
+            .get(milestone_index)
+            .expect("milestone index out of range");
         if milestone.released {
             panic!("milestone already released");
         }
 
         let tok = token::Client::new(&env, &comm.bounty_token);
-        tok.transfer(&env.current_contract_address(), &fulfiller, &milestone.amount);
+        tok.transfer(
+            &env.current_contract_address(),
+            &fulfiller,
+            &milestone.amount,
+        );
 
         milestone.released = true;
         comm.milestones.set(milestone_index, milestone.clone());
@@ -317,7 +372,8 @@ impl DataCommission {
     }
 
     pub fn get_commission(env: Env, commission_id: String) -> Commission {
-        env.storage().persistent()
+        env.storage()
+            .persistent()
             .get(&commission_id)
             .expect("commission not found")
     }
@@ -330,29 +386,38 @@ impl DataCommission {
         if !env.storage().persistent().has(&commission_id) {
             panic!("commission not found");
         }
-        env.storage().persistent().extend_ttl(&commission_id, 7_776_000, 7_776_000);
+        env.storage()
+            .persistent()
+            .extend_ttl(&commission_id, 7_776_000, 7_776_000);
     }
 
     pub fn commission_count(env: Env) -> u32 {
-        env.storage().instance().get(&symbol_short!("com_cnt")).unwrap_or(0)
+        env.storage()
+            .instance()
+            .get(&symbol_short!("com_cnt"))
+            .unwrap_or(0)
     }
 
-    pub fn version(_env: Env) -> u32 { 1 }
+    pub fn version(_env: Env) -> u32 {
+        1
+    }
 
     /// Designate the address that can rule on disputed commissions.
     /// Admin-gated; callable again to rotate the arbiter.
     pub fn set_arbiter(env: Env, arbiter: Address) {
-        let admin: Address = env.storage().instance()
+        let admin: Address = env
+            .storage()
+            .instance()
             .get(&symbol_short!("admin"))
             .expect("not initialized");
         admin.require_auth();
 
-        env.storage().instance().set(&symbol_short!("arbiter"), &arbiter);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("arbiter"), &arbiter);
 
-        env.events().publish(
-            (symbol_short!("comm"), symbol_short!("arbiter")),
-            arbiter,
-        );
+        env.events()
+            .publish((symbol_short!("comm"), symbol_short!("arbiter")), arbiter);
     }
 
     /// The commissioner flags a commission as disputed — e.g. they believe
@@ -362,7 +427,9 @@ impl DataCommission {
     pub fn raise_dispute(env: Env, commission_id: String, raised_by: Address) {
         raised_by.require_auth();
 
-        let mut comm: Commission = env.storage().persistent()
+        let mut comm: Commission = env
+            .storage()
+            .persistent()
             .get(&commission_id)
             .expect("commission not found");
 
@@ -393,12 +460,16 @@ impl DataCommission {
         fulfiller: Address,
         dataset_id: String,
     ) {
-        let arbiter: Address = env.storage().instance()
+        let arbiter: Address = env
+            .storage()
+            .instance()
             .get(&symbol_short!("arbiter"))
             .expect("no arbiter set");
         arbiter.require_auth();
 
-        let mut comm: Commission = env.storage().persistent()
+        let mut comm: Commission = env
+            .storage()
+            .persistent()
             .get(&commission_id)
             .expect("commission not found");
 
@@ -409,12 +480,20 @@ impl DataCommission {
         let tok = token::Client::new(&env, &comm.bounty_token);
 
         if award_to_fulfiller {
-            tok.transfer(&env.current_contract_address(), &fulfiller, &comm.bounty_amount);
+            tok.transfer(
+                &env.current_contract_address(),
+                &fulfiller,
+                &comm.bounty_amount,
+            );
             comm.state = CommissionState::Fulfilled;
             comm.fulfiller = Some(fulfiller.clone());
             comm.fulfilled_dataset_id = Some(dataset_id.clone());
         } else {
-            tok.transfer(&env.current_contract_address(), &comm.commissioner, &comm.bounty_amount);
+            tok.transfer(
+                &env.current_contract_address(),
+                &comm.commissioner,
+                &comm.bounty_amount,
+            );
             comm.state = CommissionState::Cancelled;
         }
         env.storage().persistent().set(&commission_id, &comm);

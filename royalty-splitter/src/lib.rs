@@ -141,6 +141,7 @@ impl RoyaltySplitter {
             panic!("contributor shares must sum to 10000 bps");
         }
 
+        env.storage().persistent().set(&config.dataset_id, &config);
         let dataset_id = config.dataset_id.clone();
         env.storage().persistent().set(&dataset_id, &config);
         env.storage()
@@ -218,7 +219,7 @@ impl RoyaltySplitter {
         for (i, (contributor, _)) in config.contributors.iter().enumerate() {
             let payout = payouts.get(i as u32).unwrap_or(0);
             if payout > 0 {
-                token_client.transfer(&contract, &contributor, &payout);
+                token_client.transfer(&env.current_contract_address(), &contributor, &payout);
             }
         }
 
