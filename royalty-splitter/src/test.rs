@@ -286,14 +286,18 @@ fn test_distribute_records_quality_tier_from_oracle() {
     let contributor = Address::generate(&env);
     setup_split(&env, &splitter, &splitter_id, &dataset_id, &contributor);
 
-    let curator = Address::generate(&env);
-    oracle.register_curator(&curator);
-    oracle.attest_quality(
-        &curator,
-        &dataset_id,
-        &75,
-        &BytesN::from_array(&env, &[1u8; 32]),
-    ); // Gold: 70-84
+    // Gold: 70-84, from enough independent curators to clear the oracle's
+    // MIN_ATTESTATIONS gate - one attestation would leave this Unrated.
+    for _ in 0..oracle.min_attestations() {
+        let curator = Address::generate(&env);
+        oracle.register_curator(&curator);
+        oracle.attest_quality(
+            &curator,
+            &dataset_id,
+            &75,
+            &BytesN::from_array(&env, &[1u8; 32]),
+        );
+    }
 
     splitter.distribute(&dataset_id, &100_000);
 
@@ -324,16 +328,16 @@ fn test_distribute_defaults_to_unrated_when_never_attested() {
 fn test_upgrade() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let admin = Address::generate(&env);
     let contract_id = env.register_contract(None, RoyaltySplitter);
     let client = RoyaltySplitterClient::new(&env, &contract_id);
-    
+
     client.initialize(&admin);
-    
+
     let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
     let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
-    
+
     client.upgrade(&wasm_hash);
 }
 
@@ -342,12 +346,12 @@ fn test_upgrade() {
 fn test_upgrade_unauthorized_not_initialized() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let contract_id = env.register_contract(None, RoyaltySplitter);
     let client = RoyaltySplitterClient::new(&env, &contract_id);
-    
+
     let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
     let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
-    
+
     client.upgrade(&wasm_hash);
 }

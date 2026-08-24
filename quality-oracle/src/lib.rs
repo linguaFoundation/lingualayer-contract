@@ -13,6 +13,14 @@ const SLASH_DEVIATION_THRESHOLD: u32 = 30;
 /// Fraction of stake burned per slash (20%).
 const SLASH_BPS: i128 = 2_000;
 const TOTAL_BPS: i128 = 10_000;
+/// Independent attestations required before a dataset is given a tier.
+///
+/// A tier is not just a label - it feeds `royalty_multiplier_bps`, so Platinum
+/// is worth 1.5x on every payout. One curator being able to confer that alone
+/// makes the multiplier only as trustworthy as the least honest registered
+/// curator. Three independent attestations means gaming a tier costs
+/// collusion rather than a single account.
+const MIN_ATTESTATIONS: u32 = 3;
 
 #[contracttype]
 #[derive(Clone, Debug)]
@@ -32,6 +40,12 @@ pub struct DatasetQuality {
     pub attestation_count: u32,
     pub last_updated_ledger: u32,
     pub tier: QualityTier,
+    /// True while `attestation_count` is below `MIN_ATTESTATIONS`. Lets a
+    /// caller tell "rated Unrated because the scores are bad" apart from
+    /// "not rated yet because not enough curators have looked at it" —
+    /// the tier alone cannot distinguish those, and they mean very
+    /// different things to someone deciding whether to license a dataset.
+    pub needs_more_attestations: bool,
 }
 
 #[contracttype]
@@ -206,6 +220,7 @@ impl QualityOracle {
                     attestation_count: 0,
                     last_updated_ledger: 0,
                     tier: QualityTier::Unrated,
+                    needs_more_attestations: true,
                 });
 
         // Running average
@@ -214,7 +229,8 @@ impl QualityOracle {
         quality.attestation_count += 1;
         quality.average_score = (new_total / quality.attestation_count as u64) as u32;
         quality.last_updated_ledger = env.ledger().sequence();
-        quality.tier = Self::compute_tier(quality.average_score);
+        quality.tier = Self::compute_tier(quality.average_score, quality.attestation_count);
+        quality.needs_more_attestations = quality.attestation_count < MIN_ATTESTATIONS;
 
         env.storage().persistent().set(&agg_key, &quality);
         env.storage()
@@ -230,10 +246,24 @@ impl QualityOracle {
     /// Get aggregate quality for a dataset.
     pub fn get_quality(env: Env, dataset_id: String) -> DatasetQuality {
         let agg_key = String::from_str(&env, &format!("agg_{:?}", dataset_id));
-        env.storage()
+        let mut quality: DatasetQuality = env
+            .storage()
             .persistent()
             .get(&agg_key)
-            .expect("no quality data for dataset")
+            .expect("no quality data for dataset");
+
+        // Recomputed on read rather than trusted from storage. An aggregate
+        // written before the threshold existed carries a tier that was never
+        // checked against it, and reading is the last point at which that can
+        // be corrected without a migration.
+        quality.tier = Self::compute_tier(quality.average_score, quality.attestation_count);
+        quality.needs_more_attestations = quality.attestation_count < MIN_ATTESTATIONS;
+        quality
+    }
+
+    /// How many independent attestations a dataset needs before it is rated.
+    pub fn min_attestations(_env: Env) -> u32 {
+        MIN_ATTESTATIONS
     }
 
     /// Get a curator's stake and standing.
@@ -362,7 +392,7 @@ impl QualityOracle {
             .persistent()
             .get::<String, DatasetQuality>(&agg_key)
         {
-            Some(q) => match q.tier {
+            Some(q) => match Self::compute_tier(q.average_score, q.attestation_count) {
                 QualityTier::Platinum => 15000,
                 QualityTier::Gold => 12500,
                 QualityTier::Silver => 10000,
@@ -385,7 +415,15 @@ impl QualityOracle {
         String::from_str(env, &format!("alist_{:?}", dataset_id))
     }
 
-    fn compute_tier(score: u32) -> QualityTier {
+    /// Tier from the running average, gated on having enough independent
+    /// attestations to trust it.
+    ///
+    /// The gate lives here rather than at the call sites so that no future
+    /// path can compute a tier without going past the threshold check.
+    fn compute_tier(score: u32, attestation_count: u32) -> QualityTier {
+        if attestation_count < MIN_ATTESTATIONS {
+            return QualityTier::Unrated;
+        }
         match score {
             0 => QualityTier::Unrated,
             1..=39 => QualityTier::Bronze,

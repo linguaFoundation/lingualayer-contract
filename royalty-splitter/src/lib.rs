@@ -50,6 +50,9 @@ pub struct DatasetQuality {
     pub attestation_count: u32,
     pub last_updated_ledger: u32,
     pub tier: QualityTier,
+    /// Must stay in step with quality-oracle's struct: this is a wire shape,
+    /// and a field missing here silently fails to decode the response.
+    pub needs_more_attestations: bool,
 }
 
 #[contractclient(name = "QualityOracleClient")]

@@ -24,15 +24,21 @@ fn setup(env: &Env) -> (LicenseRouterClient<'_>, RealOracleClient<'_>, Address) 
     (router, oracle, admin)
 }
 
+/// Attest `score` from enough independent curators for the oracle to rate the
+/// dataset. Below quality-oracle's MIN_ATTESTATIONS the tier stays `Unrated`
+/// by design, so a single attestation would leave every tier assertion below
+/// testing the unrated fallback instead of the tier it names.
 fn attest(env: &Env, oracle: &RealOracleClient, dataset_id: &String, score: u32) {
-    let curator = Address::generate(env);
-    oracle.register_curator(&curator);
-    oracle.attest_quality(
-        &curator,
-        dataset_id,
-        &score,
-        &BytesN::from_array(env, &[7u8; 32]),
-    );
+    for _ in 0..oracle.min_attestations() {
+        let curator = Address::generate(env);
+        oracle.register_curator(&curator);
+        oracle.attest_quality(
+            &curator,
+            dataset_id,
+            &score,
+            &BytesN::from_array(env, &[7u8; 32]),
+        );
+    }
 }
 
 #[test]
@@ -211,23 +217,22 @@ fn test_revoke_license() {
     assert_eq!(license.state, LicenseState::Revoked);
 }
 
-
 #[test]
 fn test_upgrade() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let admin = Address::generate(&env);
     let contract_id = env.register_contract(None, LicenseRouter);
     let client = LicenseRouterClient::new(&env, &contract_id);
-    
+
     let dataset_registry = Address::generate(&env);
-    
+
     client.initialize(&admin, &dataset_registry);
-    
+
     let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
     let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
-    
+
     client.upgrade(&wasm_hash);
 }
 
@@ -236,13 +241,13 @@ fn test_upgrade() {
 fn test_upgrade_unauthorized_not_initialized() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let contract_id = env.register_contract(None, LicenseRouter);
     let client = LicenseRouterClient::new(&env, &contract_id);
-    
+
     let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
     let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
-    
+
     client.upgrade(&wasm_hash);
 }
 // ---------------------------------------------------------------------------
