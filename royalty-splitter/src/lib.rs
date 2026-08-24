@@ -2,9 +2,25 @@
 extern crate alloc;
 use alloc::format;
 use soroban_sdk::{
+    contracterror,
     contract, contractclient, contractimpl, contracttype, symbol_short, token, Address, Env,
     String, Vec,
 };
+
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum Error {
+    AlreadyInitialized = 1,
+    NotInitialized = 2,
+    NoAdminProposalPending = 3,
+    SharesMustSumTo10000 = 4,
+    SplitConfigNotFound = 5,
+    AmountMustBePositive = 6,
+    InsufficientContractBalance = 7,
+    PayoutNotFound = 8,
+}
 
 #[contracttype]
 #[derive(Clone, Debug)]
@@ -83,9 +99,9 @@ pub struct RoyaltySplitter;
 
 #[contractimpl]
 impl RoyaltySplitter {
-    pub fn initialize(env: Env, admin: Address) {
+    pub fn initialize(env: Env, admin: Address) -> Result<(), Error> {
         if env.storage().instance().has(&symbol_short!("admin")) {
-            panic!("already initialized");
+            return Err(Error::AlreadyInitialized);
         }
         admin.require_auth();
         env.storage()
@@ -95,52 +111,55 @@ impl RoyaltySplitter {
             .instance()
             .set(&symbol_short!("pay_cnt"), &0u32);
         Self::bump_instance(&env);
+        Ok(())
     }
 
     /// Step 1 of admin handoff: current admin proposes a successor. The
     /// proposal must be accepted by the new admin via `accept_admin` before
     /// control actually transfers — a compromised key alone can't hand
     /// itself off without the new admin's own signature.
-    pub fn propose_admin(env: Env, new_admin: Address) {
+    pub fn propose_admin(env: Env, new_admin: Address) -> Result<(), Error> {
         let admin: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("admin"))
-            .expect("not initialized");
+            .ok_or(Error::NotInitialized)?;
         admin.require_auth();
         env.storage()
             .instance()
             .set(&symbol_short!("proposed"), &new_admin);
+        Ok(())
     }
 
     /// Step 2: the proposed admin accepts, completing the handoff.
-    pub fn accept_admin(env: Env) {
+    pub fn accept_admin(env: Env) -> Result<(), Error> {
         let proposed: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("proposed"))
-            .expect("no admin proposal pending");
+            .ok_or(Error::NoAdminProposalPending)?;
         proposed.require_auth();
         env.storage()
             .instance()
             .set(&symbol_short!("admin"), &proposed);
         env.storage().instance().remove(&symbol_short!("proposed"));
+        Ok(())
     }
 
     /// Register a royalty split configuration for a dataset.
-    pub fn register_split(env: Env, config: SplitConfig) {
+    pub fn register_split(env: Env, config: SplitConfig) -> Result<(), Error> {
         Self::bump_instance(&env);
         let admin: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("admin"))
-            .expect("not initialized");
+            .ok_or(Error::NotInitialized)?;
         admin.require_auth();
 
         // Validate shares
         let total: u32 = config.contributors.iter().map(|(_, bps)| bps).sum();
         if total != 10000 {
-            panic!("contributor shares must sum to 10000 bps");
+            return Err(Error::SharesMustSumTo10000);
         }
 
         let dataset_id = config.dataset_id.clone();
@@ -148,27 +167,28 @@ impl RoyaltySplitter {
         env.storage()
             .persistent()
             .extend_ttl(&dataset_id, PERSISTENT_TTL, PERSISTENT_TTL);
+        Ok(())
     }
 
     /// Execute a royalty payout for a dataset from accumulated fees.
     /// Deducts 5% protocol treasury fee then splits remainder.
-    pub fn distribute(env: Env, dataset_id: String, total_amount: i128) {
+    pub fn distribute(env: Env, dataset_id: String, total_amount: i128) -> Result<(), Error> {
         Self::bump_instance(&env);
         let admin: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("admin"))
-            .expect("not initialized");
+            .ok_or(Error::NotInitialized)?;
         admin.require_auth();
 
         let config: SplitConfig = env
             .storage()
             .persistent()
             .get(&dataset_id)
-            .expect("split config not found");
+            .ok_or(Error::SplitConfigNotFound)?;
 
         if total_amount <= 0 {
-            panic!("amount must be positive");
+            return Err(Error::AmountMustBePositive);
         }
 
         let token_client = token::Client::new(&env, &config.token);
@@ -213,7 +233,7 @@ impl RoyaltySplitter {
         // payout still recorded as if it had completed.
         let contract = env.current_contract_address();
         if token_client.balance(&contract) < total_amount {
-            panic!("insufficient contract balance for distribution");
+            return Err(Error::InsufficientContractBalance);
         }
 
         token_client.transfer(&contract, &config.treasury, &treasury_fee);
@@ -276,6 +296,7 @@ impl RoyaltySplitter {
                 quality_tier,
             ),
         );
+        Ok(())
     }
 
     /// Total historical payouts recorded.
@@ -288,26 +309,27 @@ impl RoyaltySplitter {
 
     /// Read a payout receipt by its 1-based sequence number (as returned by
     /// `payout_count` after the corresponding `distribute` call).
-    pub fn get_payout(env: Env, tx_count: u32) -> PayoutRecord {
+    pub fn get_payout(env: Env, tx_count: u32) -> Result<PayoutRecord, Error> {
         let key = String::from_str(&env, &format!("pay_{}", tx_count));
         env.storage()
             .persistent()
             .get(&key)
-            .expect("payout not found")
+            .ok_or(Error::PayoutNotFound)?
     }
 
     /// Configure (or update) the QualityOracle contract used to read each
     /// dataset's quality tier at payout time. Admin only.
-    pub fn set_oracle(env: Env, oracle_contract: Address) {
+    pub fn set_oracle(env: Env, oracle_contract: Address) -> Result<(), Error> {
         let admin: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("admin"))
-            .expect("not initialized");
+            .ok_or(Error::NotInitialized)?;
         admin.require_auth();
         env.storage()
             .instance()
             .set(&symbol_short!("oracle"), &oracle_contract);
+        Ok(())
     }
 
     /// Refresh the contract's own instance entry on every storage-touching
@@ -329,28 +351,30 @@ impl RoyaltySplitter {
     /// entirely until someone re-registers the shares by hand — and whoever
     /// re-registers them decides what they are. Keeping renewal open to anyone
     /// means any contributor in the split can protect their own claim.
-    pub fn renew_split_ttl(env: Env, dataset_id: String) {
+    pub fn renew_split_ttl(env: Env, dataset_id: String) -> Result<(), Error> {
         Self::bump_instance(&env);
         if !env.storage().persistent().has(&dataset_id) {
-            panic!("no split config for dataset");
+            return Err(Error::SplitConfigNotFound);
         }
         env.storage()
             .persistent()
             .extend_ttl(&dataset_id, PERSISTENT_TTL, PERSISTENT_TTL);
+        Ok(())
     }
 
     /// Permissionlessly extend a single payout receipt's storage lifetime.
     /// Receipts are the only on-chain evidence that a distribution happened
     /// and at what quality tier, so they outlive any one caller's interest.
-    pub fn renew_payout_ttl(env: Env, tx_count: u32) {
+    pub fn renew_payout_ttl(env: Env, tx_count: u32) -> Result<(), Error> {
         Self::bump_instance(&env);
         let key = String::from_str(&env, &format!("pay_{}", tx_count));
         if !env.storage().persistent().has(&key) {
-            panic!("payout record not found");
+            return Err(Error::PayoutNotFound);
         }
         env.storage()
             .persistent()
             .extend_ttl(&key, PERSISTENT_TTL, PERSISTENT_TTL);
+        Ok(())
     }
 
     pub fn version(_env: Env) -> u32 {

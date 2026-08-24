@@ -2068,21 +2068,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "release_milestone"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'milestone already released' from contract function 'Symbol(obj#625)'"
-                },
-                {
-                  "string": "com_1"
-                },
-                {
-                  "u32": 0
-                }
-              ]
+              "error": {
+                "contract": 17
+              }
             }
           }
         }
@@ -2102,12 +2097,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 17
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -2127,7 +2122,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 17
                 }
               }
             ],
@@ -2169,7 +2164,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 17
                 }
               }
             ],

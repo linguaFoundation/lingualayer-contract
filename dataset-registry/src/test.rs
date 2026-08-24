@@ -54,7 +54,7 @@ fn register(
 // ---------------------------------------------------------------------------
 
 #[test]
-#[should_panic(expected = "metadata hash cannot be zero")]
+#[should_panic(expected = "Error(Contract, #4)")]
 fn test_register_zero_hash_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -108,7 +108,7 @@ fn test_dataset_ids_increment_across_registrations() {
 }
 
 #[test]
-#[should_panic(expected = "dataset with this metadata hash is already registered")]
+#[should_panic(expected = "Error(Contract, #5)")]
 fn test_register_duplicate_hash_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -151,7 +151,7 @@ fn test_dataset_id_for_hash_returns_id_after_registration_and_none_before() {
 // ---------------------------------------------------------------------------
 
 #[test]
-#[should_panic(expected = "contributor shares must sum to 10000 bps")]
+#[should_panic(expected = "Error(Contract, #10)")]
 fn test_register_shares_under_target_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -180,7 +180,7 @@ fn test_register_shares_under_target_panics() {
 }
 
 #[test]
-#[should_panic(expected = "contributor shares must sum to 10000 bps")]
+#[should_panic(expected = "Error(Contract, #10)")]
 fn test_register_shares_over_target_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -209,7 +209,7 @@ fn test_register_shares_over_target_panics() {
 }
 
 #[test]
-#[should_panic(expected = "dataset must have at least one contributor")]
+#[should_panic(expected = "Error(Contract, #6)")]
 fn test_register_empty_contributors_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -228,7 +228,7 @@ fn test_register_empty_contributors_panics() {
 }
 
 #[test]
-#[should_panic(expected = "contributor share must be greater than zero")]
+#[should_panic(expected = "Error(Contract, #7)")]
 fn test_register_zero_share_contributor_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -257,7 +257,7 @@ fn test_register_zero_share_contributor_panics() {
 }
 
 #[test]
-#[should_panic(expected = "duplicate contributor address")]
+#[should_panic(expected = "Error(Contract, #8)")]
 fn test_register_duplicate_contributor_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -324,7 +324,7 @@ fn test_register_multiple_contributors_summing_to_target_succeeds() {
 // ---------------------------------------------------------------------------
 
 #[test]
-#[should_panic(expected = "already initialized")]
+#[should_panic(expected = "Error(Contract, #1)")]
 fn test_double_initialize_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -332,7 +332,7 @@ fn test_double_initialize_panics() {
 }
 
 #[test]
-#[should_panic(expected = "not initialized")]
+#[should_panic(expected = "Error(Contract, #2)")]
 fn test_register_before_initialize_panics() {
     let env = Env::default();
     env.mock_all_auths();
@@ -359,7 +359,7 @@ fn test_admin_handoff_propose_then_accept() {
 }
 
 #[test]
-#[should_panic(expected = "no admin proposal pending")]
+#[should_panic(expected = "Error(Contract, #3)")]
 fn test_accept_admin_without_proposal_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -401,7 +401,7 @@ fn test_register_dataset_valid_shares() {
 }
 
 #[test]
-#[should_panic(expected = "contributor shares must sum to 10000 bps")]
+#[should_panic(expected = "Error(Contract, #10)")]
 fn test_register_dataset_invalid_shares() {
     let env = Env::default();
     let owner = Address::generate(&env);
@@ -435,7 +435,7 @@ fn test_register_dataset_invalid_shares() {
 }
 
 #[test]
-#[should_panic(expected = "already initialized")]
+#[should_panic(expected = "Error(Contract, #1)")]
 fn test_double_initialize() {
     let env = Env::default();
     let contract_id = env.register_contract(None, DatasetRegistry);
@@ -523,7 +523,7 @@ fn test_update_metadata_bumps_version_and_moves_hash_index() {
 }
 
 #[test]
-#[should_panic(expected = "metadata hash cannot be zero")]
+#[should_panic(expected = "Error(Contract, #4)")]
 fn test_update_metadata_zero_hash_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -534,7 +534,7 @@ fn test_update_metadata_zero_hash_panics() {
 }
 
 #[test]
-#[should_panic(expected = "metadata hash unchanged")]
+#[should_panic(expected = "Error(Contract, #14)")]
 fn test_update_metadata_same_hash_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -546,7 +546,7 @@ fn test_update_metadata_same_hash_panics() {
 }
 
 #[test]
-#[should_panic(expected = "dataset with this metadata hash is already registered")]
+#[should_panic(expected = "Error(Contract, #5)")]
 fn test_update_metadata_to_another_datasets_hash_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -560,7 +560,7 @@ fn test_update_metadata_to_another_datasets_hash_panics() {
 }
 
 #[test]
-#[should_panic(expected = "dataset not found")]
+#[should_panic(expected = "Error(Contract, #12)")]
 fn test_update_metadata_unknown_dataset_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -589,7 +589,7 @@ fn test_flag_then_reinstate_round_trips_state() {
 }
 
 #[test]
-#[should_panic(expected = "dataset must be active to update metadata")]
+#[should_panic(expected = "Error(Contract, #13)")]
 fn test_update_metadata_under_review_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -601,7 +601,7 @@ fn test_update_metadata_under_review_panics() {
 }
 
 #[test]
-#[should_panic(expected = "only an active dataset can be flagged for review")]
+#[should_panic(expected = "Error(Contract, #15)")]
 fn test_flag_twice_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -613,7 +613,7 @@ fn test_flag_twice_panics() {
 }
 
 #[test]
-#[should_panic(expected = "only a dataset under review can be reinstated")]
+#[should_panic(expected = "Error(Contract, #16)")]
 fn test_reinstate_active_dataset_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -665,7 +665,7 @@ fn test_under_review_dataset_can_be_deprecated() {
 }
 
 #[test]
-#[should_panic(expected = "only the dataset owner or admin can deprecate")]
+#[should_panic(expected = "Error(Contract, #17)")]
 fn test_stranger_cannot_deprecate() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -677,7 +677,7 @@ fn test_stranger_cannot_deprecate() {
 }
 
 #[test]
-#[should_panic(expected = "dataset is already deprecated")]
+#[should_panic(expected = "Error(Contract, #18)")]
 fn test_double_deprecate_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -689,7 +689,7 @@ fn test_double_deprecate_panics() {
 }
 
 #[test]
-#[should_panic(expected = "dataset must be active to update metadata")]
+#[should_panic(expected = "Error(Contract, #13)")]
 fn test_update_metadata_after_deprecation_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -701,7 +701,7 @@ fn test_update_metadata_after_deprecation_panics() {
 }
 
 #[test]
-#[should_panic(expected = "only an active dataset can be flagged for review")]
+#[should_panic(expected = "Error(Contract, #15)")]
 fn test_deprecated_is_terminal_and_cannot_be_flagged() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -734,7 +734,7 @@ fn test_reputation_accrues_per_registration() {
 }
 
 #[test]
-#[should_panic(expected = "no reputation data")]
+#[should_panic(expected = "Error(Contract, #11)")]
 fn test_reputation_for_unknown_address_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);

@@ -1,13 +1,27 @@
 #![no_std]
 extern crate alloc;
 use alloc::format;
-use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, Env, String};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env, String};
 
 /// Maximum quality score (100 points)
 const MAX_SCORE: u32 = 100;
 /// Minimum stake to become a certified curator (10 XLM in stroops)
 #[allow(dead_code)]
 const MIN_CURATOR_STAKE: i128 = 100_000_000;
+
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum Error {
+    AlreadyInitialized = 1,
+    NotInitialized = 2,
+    NoAdminProposalPending = 3,
+    CuratorAlreadyRegistered = 4,
+    CuratorNotRegistered = 5,
+    ScoreOutOfRange = 6,
+    NoQualityDataForDataset = 7,
+}
 
 #[contracttype]
 #[derive(Clone, Debug)]
@@ -47,9 +61,9 @@ pub struct QualityOracle;
 
 #[contractimpl]
 impl QualityOracle {
-    pub fn initialize(env: Env, admin: Address) {
+    pub fn initialize(env: Env, admin: Address) -> Result<(), Error> {
         if env.storage().instance().has(&symbol_short!("admin")) {
-            panic!("already initialized");
+            return Err(Error::AlreadyInitialized);
         }
         admin.require_auth();
         env.storage()
@@ -58,44 +72,47 @@ impl QualityOracle {
         env.storage()
             .instance()
             .set(&symbol_short!("cur_cnt"), &0u32);
+        Ok(())
     }
 
     /// Step 1 of admin handoff: current admin proposes a successor. The
     /// proposal must be accepted by the new admin via `accept_admin` before
     /// control actually transfers — a compromised key alone can't hand
     /// itself off without the new admin's own signature.
-    pub fn propose_admin(env: Env, new_admin: Address) {
+    pub fn propose_admin(env: Env, new_admin: Address) -> Result<(), Error> {
         let admin: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("admin"))
-            .expect("not initialized");
+            .ok_or(Error::NotInitialized)?;
         admin.require_auth();
         env.storage()
             .instance()
             .set(&symbol_short!("proposed"), &new_admin);
+        Ok(())
     }
 
     /// Step 2: the proposed admin accepts, completing the handoff.
-    pub fn accept_admin(env: Env) {
+    pub fn accept_admin(env: Env) -> Result<(), Error> {
         let proposed: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("proposed"))
-            .expect("no admin proposal pending");
+            .ok_or(Error::NoAdminProposalPending)?;
         proposed.require_auth();
         env.storage()
             .instance()
             .set(&symbol_short!("admin"), &proposed);
         env.storage().instance().remove(&symbol_short!("proposed"));
+        Ok(())
     }
 
     /// Register a curator by staking XLM. Stakers can be slashed for bad scores.
-    pub fn register_curator(env: Env, curator: Address) {
+    pub fn register_curator(env: Env, curator: Address) -> Result<(), Error> {
         curator.require_auth();
         let key = String::from_str(&env, &format!("cur_{:?}", curator));
         if env.storage().persistent().has(&key) {
-            panic!("curator already registered");
+            return Err(Error::CuratorAlreadyRegistered);
         }
         env.storage().persistent().set(&key, &true);
         env.storage()
@@ -113,6 +130,7 @@ impl QualityOracle {
 
         env.events()
             .publish((symbol_short!("oracle"), symbol_short!("curator")), curator);
+        Ok(())
     }
 
     /// Submit a quality score attestation for a dataset.
@@ -122,16 +140,16 @@ impl QualityOracle {
         dataset_id: String,
         score: u32,
         rubric_hash: soroban_sdk::BytesN<32>,
-    ) {
+    ) -> Result<(), Error> {
         curator.require_auth();
 
         // Validate curator is registered
         let cur_key = String::from_str(&env, &format!("cur_{:?}", curator));
         if !env.storage().persistent().has(&cur_key) {
-            panic!("curator not registered");
+            return Err(Error::CuratorNotRegistered);
         }
         if score > MAX_SCORE {
-            panic!("score must be 0-100");
+            return Err(Error::ScoreOutOfRange);
         }
 
         // Record attestation
@@ -179,28 +197,30 @@ impl QualityOracle {
             (symbol_short!("oracle"), symbol_short!("attested")),
             (dataset_id, curator, score, quality.tier),
         );
+        Ok(())
     }
 
     /// Get aggregate quality for a dataset.
-    pub fn get_quality(env: Env, dataset_id: String) -> DatasetQuality {
+    pub fn get_quality(env: Env, dataset_id: String) -> Result<DatasetQuality, Error> {
         let agg_key = String::from_str(&env, &format!("agg_{:?}", dataset_id));
         env.storage()
             .persistent()
             .get(&agg_key)
-            .expect("no quality data for dataset")
+            .ok_or(Error::NoQualityDataForDataset)?
     }
 
     /// Extend a dataset's quality-aggregate TTL. Permissionless — anyone
     /// may call this to keep a dataset's quality record (and the royalty
     /// tier it feeds into) from expiring off persistent storage.
-    pub fn renew_quality_ttl(env: Env, dataset_id: String) {
+    pub fn renew_quality_ttl(env: Env, dataset_id: String) -> Result<(), Error> {
         let agg_key = String::from_str(&env, &format!("agg_{:?}", dataset_id));
         if !env.storage().persistent().has(&agg_key) {
-            panic!("no quality data for dataset");
+            return Err(Error::NoQualityDataForDataset);
         }
         env.storage()
             .persistent()
             .extend_ttl(&agg_key, 7_776_000, 7_776_000);
+        Ok(())
     }
 
     /// Compute royalty multiplier (bps) based on quality tier.

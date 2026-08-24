@@ -840,21 +840,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "deprecate_dataset"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'dataset is already deprecated' from contract function 'Symbol(obj#213)'"
-                },
-                {
-                  "string": "ds_1"
-                },
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
-                }
-              ]
+              "error": {
+                "contract": 18
+              }
             }
           }
         }
@@ -874,12 +869,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 18
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -899,7 +894,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 18
                 }
               }
             ],
@@ -941,7 +936,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 18
                 }
               }
             ],
