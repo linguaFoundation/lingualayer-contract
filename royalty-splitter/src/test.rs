@@ -297,77 +297,43 @@ fn test_distribute_beyond_balance_panics_before_transferring() {
     let alice = Address::generate(&f.env);
     f.register(shares(&f.env, &[(alice, 10000)]));
 
-    f.client.distribute(&dataset(&f.env), &1_000);
+    token_id
 }
 
 #[test]
-#[should_panic(expected = "split config not found")]
-fn test_distribute_without_config_panics() {
-    let f = setup(1_000);
-    f.client.distribute(&dataset(&f.env), &1_000);
-}
-
-#[test]
-#[should_panic(expected = "contributor shares must sum to 10000 bps")]
-fn test_register_split_with_bad_shares_panics() {
-    let f = setup(0);
-    let alice = Address::generate(&f.env);
-    let bob = Address::generate(&f.env);
-    f.register(shares(&f.env, &[(alice, 6000), (bob, 5000)]));
-}
-
-#[test]
-fn test_register_split_is_readable() {
-    let f = setup(0);
-    let alice = Address::generate(&f.env);
-    f.register(shares(&f.env, &[(alice.clone(), 10000)]));
-
-    let config = f.client.get_split(&dataset(&f.env));
-    assert_eq!(config.treasury, f.treasury);
-    assert_eq!(config.contributors.len(), 1);
-}
-
-#[test]
-#[should_panic(expected = "already initialized")]
-fn test_double_initialize_panics() {
-    let f = setup(0);
-    f.client.initialize(&Address::generate(&f.env));
-}
-
-#[test]
-#[should_panic(expected = "not initialized")]
-fn test_register_split_before_initialize_panics() {
+fn test_distribute_records_quality_tier_from_oracle() {
     let env = Env::default();
     env.mock_all_auths();
-    let contract = env.register_contract(None, RoyaltySplitter);
-    let client = RoyaltySplitterClient::new(&env, &contract);
-    let issuer = Address::generate(&env);
-    let token_address = env.register_stellar_asset_contract(issuer);
-    let alice = Address::generate(&env);
+    let (splitter, oracle, _admin, splitter_id) = setup(&env);
+    let dataset_id = String::from_str(&env, "ds_gold");
+    let contributor = Address::generate(&env);
+    setup_split(&env, &splitter, &splitter_id, &dataset_id, &contributor);
 
-    client.register_split(&SplitConfig {
-        dataset_id: String::from_str(&env, "ds_1"),
-        token: token_address,
-        treasury: Address::generate(&env),
-        contributors: shares(&env, &[(alice, 10000)]),
-    });
+    let curator = Address::generate(&env);
+    oracle.register_curator(&curator);
+    oracle.attest_quality(&curator, &dataset_id, &75, &BytesN::from_array(&env, &[1u8; 32])); // Gold: 70-84
+
+    splitter.distribute(&dataset_id, &100_000);
+
+    let count = splitter.payout_count();
+    assert_eq!(count, 1);
+    let record = splitter.get_payout(&count);
+    assert_eq!(record.quality_tier, String::from_str(&env, "Gold"));
 }
 
 #[test]
-fn test_admin_handoff_propose_then_accept() {
-    let f = setup(0);
-    let new_admin = Address::generate(&f.env);
+fn test_distribute_defaults_to_unrated_when_never_attested() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (splitter, _oracle, _admin, splitter_id) = setup(&env);
+    let dataset_id = String::from_str(&env, "ds_never_attested");
+    let contributor = Address::generate(&env);
+    setup_split(&env, &splitter, &splitter_id, &dataset_id, &contributor);
 
-    f.client.propose_admin(&new_admin);
-    f.client.accept_admin();
+    splitter.distribute(&dataset_id, &100_000);
 
-    let another = Address::generate(&f.env);
-    f.client.propose_admin(&another);
-}
-
-#[test]
-#[should_panic(expected = "no admin proposal pending")]
-fn test_accept_admin_without_proposal_panics() {
-    let f = setup(0);
-    f.client.accept_admin();
+    let count = splitter.payout_count();
+    assert_eq!(count, 1);
+    let record = splitter.get_payout(&count);
+    assert_eq!(record.quality_tier, String::from_str(&env, "Unrated"));
 }

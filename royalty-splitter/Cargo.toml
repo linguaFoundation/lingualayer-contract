@@ -12,6 +12,7 @@ soroban-sdk = { workspace = true }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
+quality-oracle = { path = "../quality-oracle" }
 
 [features]
 testutils = ["soroban-sdk/testutils"]
