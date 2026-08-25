@@ -1423,7 +1423,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'no arbiter set' from contract function 'Symbol(obj#353)'"
+                  "string": "caught panic 'no arbiter set' from contract function 'Symbol(obj#355)'"
                 },
                 {
                   "string": "com_1"

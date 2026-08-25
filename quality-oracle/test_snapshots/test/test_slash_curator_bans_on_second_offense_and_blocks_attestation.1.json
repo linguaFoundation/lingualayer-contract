@@ -4048,7 +4048,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'curator is banned' from contract function 'Symbol(obj#963)'"
+                  "string": "caught panic 'curator is banned' from contract function 'Symbol(obj#979)'"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"

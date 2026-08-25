@@ -2074,7 +2074,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'milestone already released' from contract function 'Symbol(obj#625)'"
+                  "string": "caught panic 'milestone already released' from contract function 'Symbol(obj#627)'"
                 },
                 {
                   "string": "com_1"
