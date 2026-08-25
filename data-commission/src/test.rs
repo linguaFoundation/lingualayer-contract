@@ -391,3 +391,74 @@ fn test_upgrade_unauthorized_not_initialized() {
     
     client.upgrade(&wasm_hash);
 }
+
+// ---------------------------------------------------------------------------
+// Per-language commission analytics (#26)
+// ---------------------------------------------------------------------------
+
+fn post_lang_commission(
+    env: &Env,
+    client: &DataCommissionClient,
+    lang: &str,
+    hash_byte: u8,
+) -> String {
+    let commissioner = Address::generate(env);
+    let bounty_token = env
+        .register_stellar_asset_contract_v2(commissioner.clone())
+        .address();
+    token::StellarAssetClient::new(env, &bounty_token).mint(&commissioner, &1000);
+
+    let mut hash_bytes = [0u8; 32];
+    hash_bytes[0] = hash_byte;
+    let hash = BytesN::from_array(env, &hash_bytes);
+
+    client.post_commission(
+        &commissioner,
+        &String::from_str(env, lang),
+        &hash,
+        &bounty_token,
+        &100,
+        &10,
+        &3600,
+        &9999999,
+    )
+}
+
+#[test]
+fn test_commission_count_by_lang_tracks_per_language() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let contract_id = env.register_contract(None, DataCommission);
+    let client = DataCommissionClient::new(&env, &contract_id);
+    client.initialize(&admin);
+
+    // Post 3 Yoruba commissions and 1 Hausa commission
+    post_lang_commission(&env, &client, "yor", 10);
+    post_lang_commission(&env, &client, "yor", 11);
+    post_lang_commission(&env, &client, "yor", 12);
+    post_lang_commission(&env, &client, "hau", 13);
+
+    assert_eq!(
+        client.commission_count_by_lang(&String::from_str(&env, "yor")),
+        3
+    );
+    assert_eq!(
+        client.commission_count_by_lang(&String::from_str(&env, "hau")),
+        1
+    );
+}
+
+#[test]
+fn test_commission_count_by_lang_returns_zero_for_unknown_language() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let contract_id = env.register_contract(None, DataCommission);
+    let client = DataCommissionClient::new(&env, &contract_id);
+    client.initialize(&admin);
+
+    // No commissions posted at all — should return 0, not panic
+    let count = client.commission_count_by_lang(&String::from_str(&env, "zul"));
+    assert_eq!(count, 0);
+}

@@ -44,6 +44,17 @@ pub enum Error {
     NotPaused = 23,
 }
 
+/// Storage key used to track per-language commission counts.
+///
+/// Wrapping the language code in an enum variant keeps it isolated from every
+/// other String-keyed entry (commission ids, admin keys, etc.) and makes the
+/// intent legible when inspecting raw ledger state.
+#[contracttype]
+#[derive(Clone, Debug)]
+enum LangKey {
+    CommissionCount(String),
+}
+
 #[contracttype]
 #[derive(Clone, Debug)]
 pub struct Milestone {
@@ -274,6 +285,13 @@ impl DataCommission {
         env.storage()
             .instance()
             .set(&symbol_short!("com_cnt"), &(cnt + 1));
+
+        // Increment the per-language commission counter so
+        // `commission_count_by_lang` can answer analytics queries without
+        // scanning every commission in persistent storage.
+        let lang_key = LangKey::CommissionCount(language_code.clone());
+        let lang_cnt: u32 = env.storage().instance().get(&lang_key).unwrap_or(0);
+        env.storage().instance().set(&lang_key, &(lang_cnt + 1));
 
         env.events().publish(
             (symbol_short!("comm"), symbol_short!("posted")),
@@ -526,6 +544,14 @@ impl DataCommission {
             .instance()
             .get(&symbol_short!("com_cnt"))
             .unwrap_or(0)
+    }
+
+    /// Return the total number of commissions posted for a given ISO 639-3
+    /// language code. Returns 0 for a language with no commissions on record,
+    /// so callers never need to handle a missing-key error.
+    pub fn commission_count_by_lang(env: Env, lang: String) -> u32 {
+        let lang_key = LangKey::CommissionCount(lang);
+        env.storage().instance().get(&lang_key).unwrap_or(0)
     }
 
     pub fn version(_env: Env) -> u32 {
