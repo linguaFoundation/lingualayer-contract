@@ -151,7 +151,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'not initialized' from contract function 'Symbol(upgrade)'"
+                  "string": "caught panic 'not initialized: NotInitialized' from contract function 'Symbol(upgrade)'"
                 },
                 {
                   "bytes": "055c48b1b89b591e6629e3b5a95767c90a2db6b23db0ba3e72d05dbc7cfc3312"

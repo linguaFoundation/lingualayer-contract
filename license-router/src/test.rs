@@ -129,7 +129,7 @@ fn test_issue_research_license_free() {
 }
 
 #[test]
-#[should_panic(expected = "insufficient license fee")]
+#[should_panic(expected = "Error(Contract, #4)")]
 fn test_issue_commercial_license_insufficient_fee() {
     let env = Env::default();
     env.mock_all_auths();
@@ -296,7 +296,7 @@ fn test_nonprofit_license_at_exact_minimum_succeeds() {
 }
 
 #[test]
-#[should_panic(expected = "insufficient license fee")]
+#[should_panic(expected = "Error(Contract, #4)")]
 fn test_nonprofit_license_one_stroop_under_minimum_panics() {
     let env = Env::default();
     env.mock_all_auths();
@@ -319,7 +319,7 @@ fn test_government_license_at_exact_minimum_succeeds() {
 }
 
 #[test]
-#[should_panic(expected = "insufficient license fee")]
+#[should_panic(expected = "Error(Contract, #4)")]
 fn test_government_license_one_stroop_under_minimum_panics() {
     let env = Env::default();
     env.mock_all_auths();
@@ -469,7 +469,7 @@ fn test_reissuing_for_the_same_dataset_does_not_reactivate_a_revoked_license() {
 }
 
 #[test]
-#[should_panic(expected = "license not found")]
+#[should_panic(expected = "Error(Contract, #5)")]
 fn test_revoking_an_unknown_license_panics() {
     let env = Env::default();
     env.mock_all_auths();

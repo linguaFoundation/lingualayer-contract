@@ -1047,18 +1047,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "renew_payout_ttl"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'payout record not found' from contract function 'Symbol(obj#199)'"
-                },
-                {
-                  "u32": 99
-                }
-              ]
+              "error": {
+                "contract": 8
+              }
             }
           }
         }
@@ -1078,12 +1076,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 8
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -1103,7 +1101,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 8
                 }
               }
             ],
@@ -1142,7 +1140,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 8
                 }
               }
             ],

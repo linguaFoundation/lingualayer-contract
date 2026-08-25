@@ -151,58 +151,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "register_dataset"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'not initialized' from contract function 'Symbol(obj#19)'"
-                },
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
-                },
-                {
-                  "string": "en"
-                },
-                {
-                  "string": "Test Dataset"
-                },
-                {
-                  "bytes": "1500000000000000000000000000000000000000000000000000000000000000"
-                },
-                {
-                  "vec": [
-                    {
-                      "map": [
-                        {
-                          "key": {
-                            "symbol": "address"
-                          },
-                          "val": {
-                            "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "share_bps"
-                          },
-                          "val": {
-                            "u32": 10000
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "u32": 100
-                },
-                {
-                  "u32": 3600
-                },
-                "void"
-              ]
+              "error": {
+                "contract": 2
+              }
             }
           }
         }
@@ -222,12 +180,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 2
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -247,7 +205,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 2
                 }
               }
             ],
@@ -326,7 +284,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 2
                 }
               }
             ],

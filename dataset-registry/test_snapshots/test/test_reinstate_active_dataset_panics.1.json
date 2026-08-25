@@ -701,18 +701,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "reinstate_dataset"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'only a dataset under review can be reinstated' from contract function 'Symbol(obj#145)'"
-                },
-                {
-                  "string": "ds_1"
-                }
-              ]
+              "error": {
+                "contract": 16
+              }
             }
           }
         }
@@ -732,12 +730,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 16
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -757,7 +755,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 16
                 }
               }
             ],
@@ -796,7 +794,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 16
                 }
               }
             ],

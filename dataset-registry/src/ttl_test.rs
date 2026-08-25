@@ -132,7 +132,7 @@ fn test_renew_dataset_ttl_also_renews_hash_index() {
 }
 
 #[test]
-#[should_panic(expected = "dataset not found")]
+#[should_panic(expected = "Error(Contract, #12)")]
 fn test_renew_dataset_ttl_unknown_id_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);
@@ -184,7 +184,7 @@ fn test_renew_reputation_ttl_is_permissionless() {
 }
 
 #[test]
-#[should_panic(expected = "no reputation data")]
+#[should_panic(expected = "Error(Contract, #11)")]
 fn test_renew_reputation_ttl_unknown_address_panics() {
     let env = Env::default();
     let (client, _admin) = setup(&env);

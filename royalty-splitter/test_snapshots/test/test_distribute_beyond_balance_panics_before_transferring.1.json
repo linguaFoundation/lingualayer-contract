@@ -1079,24 +1079,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "distribute"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'insufficient contract balance for distribution' from contract function 'Symbol(obj#195)'"
-                },
-                {
-                  "string": "ds_1"
-                },
-                {
-                  "i128": {
-                    "hi": 0,
-                    "lo": 1000
-                  }
-                }
-              ]
+              "error": {
+                "contract": 7
+              }
             }
           }
         }
@@ -1116,12 +1108,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 7
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -1141,7 +1133,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 7
                 }
               }
             ],
@@ -1186,7 +1178,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 7
                 }
               }
             ],

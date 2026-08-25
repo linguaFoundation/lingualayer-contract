@@ -823,18 +823,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "flag_dataset"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'only an active dataset can be flagged for review' from contract function 'Symbol(obj#213)'"
-                },
-                {
-                  "string": "ds_1"
-                }
-              ]
+              "error": {
+                "contract": 15
+              }
             }
           }
         }
@@ -854,12 +852,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 15
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -879,7 +877,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 15
                 }
               }
             ],
@@ -918,7 +916,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 15
                 }
               }
             ],
