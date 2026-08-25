@@ -349,7 +349,7 @@
                   "string": "Paused Test"
                 },
                 {
-                  "bytes": "0707070707070707070707070707070707070707070707070707070707070707"
+                  "bytes": "0808080808080808080808080808080808080808080808080808080808080808"
                 },
                 {
                   "vec": [
@@ -398,58 +398,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "register_dataset"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'contract paused' from contract function 'Symbol(obj#41)'"
-                },
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
-                },
-                {
-                  "string": "en"
-                },
-                {
-                  "string": "Paused Test"
-                },
-                {
-                  "bytes": "0707070707070707070707070707070707070707070707070707070707070707"
-                },
-                {
-                  "vec": [
-                    {
-                      "map": [
-                        {
-                          "key": {
-                            "symbol": "address"
-                          },
-                          "val": {
-                            "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "share_bps"
-                          },
-                          "val": {
-                            "u32": 10000
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "u32": 100
-                },
-                {
-                  "u32": 3600
-                },
-                "void"
-              ]
+              "error": {
+                "contract": 19
+              }
             }
           }
         }
@@ -469,12 +427,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 19
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -494,14 +452,14 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 19
                 }
               }
             ],
             "data": {
               "vec": [
                 {
-                  "string": "contract call failed"
+                  "string": "contract try_call failed"
                 },
                 {
                   "symbol": "register_dataset"
@@ -518,7 +476,7 @@
                       "string": "Paused Test"
                     },
                     {
-                      "bytes": "0707070707070707070707070707070707070707070707070707070707070707"
+                      "bytes": "0808080808080808080808080808080808080808080808080808080808080808"
                     },
                     {
                       "vec": [
@@ -554,31 +512,6 @@
                   ]
                 }
               ]
-            }
-          }
-        }
-      },
-      "failed_call": false
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": null,
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "error"
-              },
-              {
-                "error": {
-                  "wasm_vm": "invalid_action"
-                }
-              }
-            ],
-            "data": {
-              "string": "escalating error to panic"
             }
           }
         }

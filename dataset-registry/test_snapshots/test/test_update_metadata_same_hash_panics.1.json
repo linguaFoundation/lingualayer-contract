@@ -708,21 +708,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "update_metadata"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'metadata hash unchanged' from contract function 'Symbol(obj#145)'"
-                },
-                {
-                  "string": "ds_1"
-                },
-                {
-                  "bytes": "2200000000000000000000000000000000000000000000000000000000000000"
-                }
-              ]
+              "error": {
+                "contract": 14
+              }
             }
           }
         }
@@ -742,12 +737,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 14
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -767,7 +762,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 14
                 }
               }
             ],
@@ -809,7 +804,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 14
                 }
               }
             ],

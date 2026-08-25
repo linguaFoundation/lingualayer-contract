@@ -241,18 +241,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "revoke_license"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'license not found' from contract function 'Symbol(obj#19)'"
-                },
-                {
-                  "string": "lic_404"
-                }
-              ]
+              "error": {
+                "contract": 5
+              }
             }
           }
         }
@@ -272,12 +270,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 5
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -297,7 +295,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 5
                 }
               }
             ],
@@ -336,7 +334,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 5
                 }
               }
             ],

@@ -246,37 +246,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "register_dataset"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'dataset must have at least one contributor' from contract function 'Symbol(obj#25)'"
-                },
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
-                },
-                {
-                  "string": "en"
-                },
-                {
-                  "string": "No contributors"
-                },
-                {
-                  "bytes": "0d00000000000000000000000000000000000000000000000000000000000000"
-                },
-                {
-                  "vec": []
-                },
-                {
-                  "u32": 100
-                },
-                {
-                  "u32": 3600
-                },
-                "void"
-              ]
+              "error": {
+                "contract": 6
+              }
             }
           }
         }
@@ -296,12 +275,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 6
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -321,7 +300,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 6
                 }
               }
             ],
@@ -379,7 +358,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 6
                 }
               }
             ],

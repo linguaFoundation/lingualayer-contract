@@ -34,12 +34,15 @@ fn test_pause_then_unpause_round_trips() {
 }
 
 #[test]
-#[should_panic(expected = "contract paused")]
 fn test_a_write_is_rejected_while_paused() {
     let (env, client, admin) = setup();
     let _ = (&env, &admin);
+
     client.pause();
-    client.set_arbiter(&Address::generate(&env));
+    assert_eq!(
+        client.try_set_arbiter(&Address::generate(&env)),
+        Err(Ok(Error::ContractPaused))
+    );
 }
 
 #[test]
@@ -48,7 +51,10 @@ fn test_the_same_write_succeeds_once_unpaused() {
     let _ = (&env, &admin);
 
     client.pause();
-    assert!(client.try_set_arbiter(&Address::generate(&env)).is_err());
+    assert_eq!(
+        client.try_set_arbiter(&Address::generate(&env)),
+        Err(Ok(Error::ContractPaused))
+    );
 
     // The whole point of the mechanism: the freeze is reversible and leaves
     // the contract working exactly as it did before.
@@ -65,7 +71,7 @@ fn test_reads_still_answer_while_paused() {
     // Integrators and the front end have to keep answering questions about
     // existing state during an incident; a read cannot make things worse.
     assert!(client.is_paused());
-    assert_eq!(client.version(), 3);
+    assert_eq!(client.version(), 2);
 }
 
 #[test]
@@ -79,23 +85,23 @@ fn test_a_non_admin_cannot_pause() {
 
     // Drop the blanket auth mock: pause() now has to satisfy the admin's own
     // require_auth, which an unauthorized caller cannot produce.
-    let env2 = env.clone();
-    env2.set_auths(&[]);
+    env.set_auths(&[]);
     assert!(client.try_pause().is_err());
     assert!(!client.is_paused());
 }
 
 #[test]
-#[should_panic(expected = "already paused")]
 fn test_pausing_twice_is_rejected() {
     let (_env, client, _admin) = setup();
     client.pause();
-    client.pause();
+    assert_eq!(client.try_pause(), Err(Ok(Error::AlreadyPaused)));
+    // Still paused - the rejected call changed nothing.
+    assert!(client.is_paused());
 }
 
 #[test]
-#[should_panic(expected = "not paused")]
 fn test_unpausing_a_live_contract_is_rejected() {
     let (_env, client, _admin) = setup();
-    client.unpause();
+    assert_eq!(client.try_unpause(), Err(Ok(Error::NotPaused)));
+    assert!(!client.is_paused());
 }

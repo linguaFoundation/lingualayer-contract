@@ -9891,6 +9891,14 @@
                     },
                     {
                       "key": {
+                        "symbol": "needs_more_attestations"
+                      },
+                      "val": {
+                        "bool": false
+                      }
+                    },
+                    {
+                      "key": {
                         "symbol": "tier"
                       },
                       "val": {
@@ -49433,7 +49441,7 @@
                 {
                   "vec": [
                     {
-                      "symbol": "Platinum"
+                      "symbol": "Unrated"
                     }
                   ]
                 }
@@ -49542,12 +49550,20 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": true
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
                     "vec": [
                       {
-                        "symbol": "Platinum"
+                        "symbol": "Unrated"
                       }
                     ]
                   }
@@ -49601,7 +49617,7 @@
               }
             ],
             "data": {
-              "u32": 15000
+              "u32": 10000
             }
           }
         }
@@ -49746,7 +49762,7 @@
                 {
                   "vec": [
                     {
-                      "symbol": "Silver"
+                      "symbol": "Unrated"
                     }
                   ]
                 }
@@ -49855,12 +49871,20 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": true
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
                     "vec": [
                       {
-                        "symbol": "Silver"
+                        "symbol": "Unrated"
                       }
                     ]
                   }
@@ -50164,6 +50188,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -50481,6 +50513,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -50790,6 +50830,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -51107,6 +51155,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -51416,6 +51472,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -51733,6 +51797,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -52042,6 +52114,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -52359,6 +52439,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -52668,6 +52756,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -52985,6 +53081,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -53294,6 +53398,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -53611,6 +53723,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -53920,6 +54040,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -54237,6 +54365,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -54546,6 +54682,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -54863,6 +55007,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -55172,6 +55324,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -55489,6 +55649,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -55798,6 +55966,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -56115,6 +56291,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -56424,6 +56608,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -56741,6 +56933,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -57050,6 +57250,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -57367,6 +57575,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -57676,6 +57892,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -57993,6 +58217,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -58302,6 +58534,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -58619,6 +58859,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -58928,6 +59176,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -59245,6 +59501,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -59554,6 +59818,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -59871,6 +60143,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -60180,6 +60460,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -60497,6 +60785,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -60806,6 +61102,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -61123,6 +61427,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -61432,6 +61744,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -61749,6 +62069,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -62058,6 +62386,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -62375,6 +62711,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -62684,6 +63028,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -63001,6 +63353,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -63310,6 +63670,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -63627,6 +63995,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -63936,6 +64312,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -64253,6 +64637,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -64562,6 +64954,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -64879,6 +65279,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -65188,6 +65596,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -65505,6 +65921,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -65814,6 +66238,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -66131,6 +66563,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -66440,6 +66880,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -66757,6 +67205,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -67066,6 +67522,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -67383,6 +67847,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -67692,6 +68164,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -68009,6 +68489,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -68318,6 +68806,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -68635,6 +69131,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -68944,6 +69448,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -69261,6 +69773,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -69570,6 +70090,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -69887,6 +70415,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -70196,6 +70732,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -70513,6 +71057,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -70822,6 +71374,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -71139,6 +71699,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -71448,6 +72016,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -71765,6 +72341,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -72074,6 +72658,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -72391,6 +72983,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -72700,6 +73300,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -73017,6 +73625,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -73326,6 +73942,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -73643,6 +74267,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -73952,6 +74584,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -74269,6 +74909,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -74578,6 +75226,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -74895,6 +75551,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -75204,6 +75868,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -75521,6 +76193,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -75830,6 +76510,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -76147,6 +76835,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -76456,6 +77152,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -76773,6 +77477,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -77082,6 +77794,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -77399,6 +78119,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -77708,6 +78436,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -78025,6 +78761,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -78334,6 +79078,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -78651,6 +79403,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -78960,6 +79720,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -79277,6 +80045,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -79586,6 +80362,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -79903,6 +80687,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -80212,6 +81004,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -80529,6 +81329,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -80838,6 +81646,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -81155,6 +81971,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -81464,6 +82288,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -81781,6 +82613,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -82090,6 +82930,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -82407,6 +83255,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -82716,6 +83572,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -83033,6 +83897,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -83342,6 +84214,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -83659,6 +84539,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -83968,6 +84856,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -84285,6 +85181,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -84594,6 +85498,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -84911,6 +85823,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -85220,6 +86140,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -85537,6 +86465,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -85846,6 +86782,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -86163,6 +87107,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -86472,6 +87424,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -86789,6 +87749,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -87098,6 +88066,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -87415,6 +88391,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -87724,6 +88708,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -88041,6 +89033,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -88350,6 +89350,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -88667,6 +89675,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -88976,6 +89992,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -89293,6 +90317,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -89602,6 +90634,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -89919,6 +90959,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -90228,6 +91276,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -90545,6 +91601,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -90854,6 +91918,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -91171,6 +92243,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -91480,6 +92560,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -91797,6 +92885,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -92106,6 +93202,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -92423,6 +93527,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -92732,6 +93844,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -93049,6 +94169,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -93358,6 +94486,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -93675,6 +94811,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -93984,6 +95128,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -94301,6 +95453,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -94610,6 +95770,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -94927,6 +96095,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -95236,6 +96412,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -95553,6 +96737,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -95862,6 +97054,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -96179,6 +97379,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -96488,6 +97696,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -96805,6 +98021,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -97114,6 +98338,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -97431,6 +98663,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -97740,6 +98980,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -98057,6 +99305,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -98366,6 +99622,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -98683,6 +99947,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -98992,6 +100264,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -99309,6 +100589,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -99618,6 +100906,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -99935,6 +101231,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -100244,6 +101548,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -100561,6 +101873,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -100870,6 +102190,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -101187,6 +102515,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -101496,6 +102832,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -101813,6 +103157,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -102122,6 +103474,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -102439,6 +103799,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -102748,6 +104116,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -103065,6 +104441,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -103374,6 +104758,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -103691,6 +105083,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -104000,6 +105400,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -104317,6 +105725,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -104626,6 +106042,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -104943,6 +106367,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -105252,6 +106684,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -105569,6 +107009,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -105878,6 +107326,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -106195,6 +107651,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -106504,6 +107968,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -106821,6 +108293,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -107130,6 +108610,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -107447,6 +108935,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -107756,6 +109252,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -108073,6 +109577,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -108382,6 +109894,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -108699,6 +110219,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -109008,6 +110536,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -109325,6 +110861,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -109634,6 +111178,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -109951,6 +111503,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -110260,6 +111820,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -110577,6 +112145,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -110886,6 +112462,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {
@@ -111203,6 +112787,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -111516,6 +113108,14 @@
                 },
                 {
                   "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
+                  }
+                },
+                {
+                  "key": {
                     "symbol": "tier"
                   },
                   "val": {
@@ -111825,6 +113425,14 @@
                   },
                   "val": {
                     "u32": 0
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "needs_more_attestations"
+                  },
+                  "val": {
+                    "bool": false
                   }
                 },
                 {

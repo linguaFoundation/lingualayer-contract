@@ -5,7 +5,6 @@
 
 use super::*;
 use soroban_sdk::{testutils::Address as _, Address, Env};
-
 use soroban_sdk::{BytesN, String, Vec};
 
 fn sole(env: &Env, who: &Address) -> Vec<ContributorShare> {
@@ -45,20 +44,23 @@ fn test_pause_then_unpause_round_trips() {
 }
 
 #[test]
-#[should_panic(expected = "contract paused")]
 fn test_a_write_is_rejected_while_paused() {
     let (env, client, admin) = setup();
     let _ = (&env, &admin);
+
     client.pause();
-    client.register_dataset(
-        &admin,
-        &String::from_str(&env, "en"),
-        &String::from_str(&env, "Paused Test"),
-        &BytesN::from_array(&env, &[7u8; 32]),
-        &sole(&env, &admin),
-        &100,
-        &3600,
-        &None,
+    assert_eq!(
+        client.try_register_dataset(
+            &admin,
+            &String::from_str(&env, "en"),
+            &String::from_str(&env, "Paused Test"),
+            &BytesN::from_array(&env, &[8u8; 32]),
+            &sole(&env, &admin),
+            &100,
+            &3600,
+            &None,
+        ),
+        Err(Ok(Error::ContractPaused))
     );
 }
 
@@ -68,8 +70,8 @@ fn test_the_same_write_succeeds_once_unpaused() {
     let _ = (&env, &admin);
 
     client.pause();
-    assert!(client
-        .try_register_dataset(
+    assert_eq!(
+        client.try_register_dataset(
             &admin,
             &String::from_str(&env, "en"),
             &String::from_str(&env, "Paused Test"),
@@ -78,8 +80,9 @@ fn test_the_same_write_succeeds_once_unpaused() {
             &100,
             &3600,
             &None,
-        )
-        .is_err());
+        ),
+        Err(Ok(Error::ContractPaused))
+    );
 
     // The whole point of the mechanism: the freeze is reversible and leaves
     // the contract working exactly as it did before.
@@ -105,7 +108,7 @@ fn test_reads_still_answer_while_paused() {
     // Integrators and the front end have to keep answering questions about
     // existing state during an incident; a read cannot make things worse.
     assert!(client.is_paused());
-    assert_eq!(client.version(), 4);
+    assert_eq!(client.version(), 3);
 }
 
 #[test]
@@ -119,23 +122,23 @@ fn test_a_non_admin_cannot_pause() {
 
     // Drop the blanket auth mock: pause() now has to satisfy the admin's own
     // require_auth, which an unauthorized caller cannot produce.
-    let env2 = env.clone();
-    env2.set_auths(&[]);
+    env.set_auths(&[]);
     assert!(client.try_pause().is_err());
     assert!(!client.is_paused());
 }
 
 #[test]
-#[should_panic(expected = "already paused")]
 fn test_pausing_twice_is_rejected() {
     let (_env, client, _admin) = setup();
     client.pause();
-    client.pause();
+    assert_eq!(client.try_pause(), Err(Ok(Error::AlreadyPaused)));
+    // Still paused - the rejected call changed nothing.
+    assert!(client.is_paused());
 }
 
 #[test]
-#[should_panic(expected = "not paused")]
 fn test_unpausing_a_live_contract_is_rejected() {
     let (_env, client, _admin) = setup();
-    client.unpause();
+    assert_eq!(client.try_unpause(), Err(Ok(Error::NotPaused)));
+    assert!(!client.is_paused());
 }

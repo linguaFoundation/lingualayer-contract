@@ -14,17 +14,21 @@ fn test_register_and_attest_happy_path() {
     let admin = Address::generate(&env);
     client.initialize(&admin);
 
-    let curator = Address::generate(&env);
-    client.register_curator(&curator);
-
     let dataset_id = String::from_str(&env, "ds_1");
     let rubric_hash = BytesN::from_array(&env, &[1u8; 32]);
-    client.attest_quality(&curator, &dataset_id, &75, &rubric_hash);
+
+    // A tier needs MIN_ATTESTATIONS independent curators behind it.
+    for _ in 0..client.min_attestations() {
+        let curator = Address::generate(&env);
+        client.register_curator(&curator);
+        client.attest_quality(&curator, &dataset_id, &75, &rubric_hash);
+    }
 
     let quality = client.get_quality(&dataset_id);
     assert_eq!(quality.average_score, 75);
-    assert_eq!(quality.attestation_count, 1);
+    assert_eq!(quality.attestation_count, 3);
     assert_eq!(quality.tier, QualityTier::Gold);
+    assert!(!quality.needs_more_attestations);
 }
 
 /// A tiny xorshift32 PRNG — deterministic and dependency-free, so this fuzz
@@ -49,7 +53,10 @@ impl Xorshift32 {
     }
 }
 
-fn expected_tier(score: u32) -> QualityTier {
+fn expected_tier(score: u32, attestation_count: u32) -> QualityTier {
+    if attestation_count < 3 {
+        return QualityTier::Unrated;
+    }
     match score {
         0 => QualityTier::Unrated,
         1..=39 => QualityTier::Bronze,
@@ -149,10 +156,15 @@ fn test_fuzz_score_aggregation_invariants_hold_across_random_sequence() {
             "iteration {i}: attestation_count diverged"
         );
 
-        let tier = expected_tier(quality.average_score);
+        let tier = expected_tier(quality.average_score, quality.attestation_count);
         assert_eq!(
             quality.tier, tier,
             "iteration {i}: tier inconsistent with its own average_score"
+        );
+        assert_eq!(
+            quality.needs_more_attestations,
+            quality.attestation_count < 3,
+            "iteration {i}: needs_more_attestations disagrees with the count"
         );
 
         let bps = client.royalty_multiplier_bps(&dataset_id);
@@ -169,7 +181,7 @@ fn test_fuzz_score_aggregation_invariants_hold_across_random_sequence() {
 }
 
 #[test]
-#[should_panic(expected = "score must be 0-100")]
+#[should_panic(expected = "Error(Contract, #6)")]
 fn test_attest_quality_rejects_out_of_range_score() {
     let env = Env::default();
     let contract_id = env.register_contract(None, QualityOracle);
@@ -189,7 +201,7 @@ fn test_attest_quality_rejects_out_of_range_score() {
 }
 
 #[test]
-#[should_panic(expected = "curator not registered")]
+#[should_panic(expected = "Error(Contract, #5)")]
 fn test_attest_quality_rejects_unregistered_curator() {
     let env = Env::default();
     let contract_id = env.register_contract(None, QualityOracle);
@@ -258,7 +270,10 @@ fn test_slash_curator_bans_on_second_offense_and_blocks_attestation() {
     let (_admin, outlier, dataset_id) = setup_outlier_scenario(&env, &client);
 
     client.slash_curator(&outlier, &dataset_id);
-    assert_eq!(client.get_curator(&outlier).status, CuratorStatus::SlashWarning);
+    assert_eq!(
+        client.get_curator(&outlier).status,
+        CuratorStatus::SlashWarning
+    );
 
     // A second dataset where the same curator is again an outlier.
     let dataset_id_2 = String::from_str(&env, "ds_slash_2");
@@ -333,16 +348,16 @@ fn test_slash_curator_rejects_non_admin_caller() {
 fn test_upgrade() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let admin = Address::generate(&env);
     let contract_id = env.register_contract(None, QualityOracle);
     let client = QualityOracleClient::new(&env, &contract_id);
-    
+
     client.initialize(&admin);
-    
+
     let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
     let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
-    
+
     client.upgrade(&wasm_hash);
 }
 
@@ -351,12 +366,131 @@ fn test_upgrade() {
 fn test_upgrade_unauthorized_not_initialized() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let contract_id = env.register_contract(None, QualityOracle);
     let client = QualityOracleClient::new(&env, &contract_id);
-    
+
     let dummy_wasm: &[u8] = include_bytes!("../../test_data/dummy.wasm");
     let wasm_hash = env.deployer().upload_contract_wasm(dummy_wasm);
-    
+
     client.upgrade(&wasm_hash);
+}
+
+// ---------------------------------------------------------------------------
+// Minimum attestation threshold
+// ---------------------------------------------------------------------------
+
+fn threshold_fixture() -> (Env, Address, String) {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register_contract(None, QualityOracle);
+    QualityOracleClient::new(&env, &contract_id).initialize(&Address::generate(&env));
+    let dataset_id = String::from_str(&env, "ds_threshold");
+    (env, contract_id, dataset_id)
+}
+
+/// One fresh curator submits `score` for `dataset_id`.
+fn attest_once(env: &Env, contract_id: &Address, dataset_id: &String, score: u32) {
+    let client = QualityOracleClient::new(env, contract_id);
+    let curator = Address::generate(env);
+    client.register_curator(&curator);
+    client.attest_quality(
+        &curator,
+        dataset_id,
+        &score,
+        &BytesN::from_array(env, &[3u8; 32]),
+    );
+}
+
+#[test]
+fn test_two_curators_at_max_score_still_leave_the_dataset_unrated() {
+    let (env, contract_id, dataset_id) = threshold_fixture();
+    let client = QualityOracleClient::new(&env, &contract_id);
+
+    // The gaming case the threshold exists for: without it, these two
+    // attestations alone would confer Platinum and a 1.5x royalty premium.
+    attest_once(&env, &contract_id, &dataset_id, 100);
+    let q = client.get_quality(&dataset_id);
+    assert_eq!(q.attestation_count, 1);
+    assert_eq!(q.tier, QualityTier::Unrated);
+    assert!(q.needs_more_attestations);
+
+    attest_once(&env, &contract_id, &dataset_id, 100);
+    let q = client.get_quality(&dataset_id);
+    assert_eq!(q.attestation_count, 2);
+    assert_eq!(q.average_score, 100);
+    assert_eq!(q.tier, QualityTier::Unrated);
+    assert!(q.needs_more_attestations);
+}
+
+#[test]
+fn test_the_third_curator_turns_max_scores_into_platinum() {
+    let (env, contract_id, dataset_id) = threshold_fixture();
+    let client = QualityOracleClient::new(&env, &contract_id);
+
+    attest_once(&env, &contract_id, &dataset_id, 100);
+    attest_once(&env, &contract_id, &dataset_id, 100);
+    assert_eq!(client.get_quality(&dataset_id).tier, QualityTier::Unrated);
+
+    attest_once(&env, &contract_id, &dataset_id, 100);
+    let q = client.get_quality(&dataset_id);
+    assert_eq!(q.attestation_count, 3);
+    assert_eq!(q.tier, QualityTier::Platinum);
+    assert!(!q.needs_more_attestations);
+}
+
+#[test]
+fn test_the_tier_that_appears_at_the_threshold_is_the_average_not_the_latest() {
+    let (env, contract_id, dataset_id) = threshold_fixture();
+    let client = QualityOracleClient::new(&env, &contract_id);
+
+    // 100, 100, 30 averages to 76 - Gold. A rule that keyed off the most
+    // recent score, or off the best one, would say Bronze or Platinum here.
+    attest_once(&env, &contract_id, &dataset_id, 100);
+    attest_once(&env, &contract_id, &dataset_id, 100);
+    attest_once(&env, &contract_id, &dataset_id, 30);
+
+    let q = client.get_quality(&dataset_id);
+    assert_eq!(q.average_score, 76);
+    assert_eq!(q.tier, QualityTier::Gold);
+}
+
+#[test]
+fn test_an_unrated_dataset_earns_the_neutral_royalty_multiplier() {
+    let (env, contract_id, dataset_id) = threshold_fixture();
+    let client = QualityOracleClient::new(&env, &contract_id);
+
+    // The whole point: two max scores must not buy the 1.5x premium.
+    attest_once(&env, &contract_id, &dataset_id, 100);
+    attest_once(&env, &contract_id, &dataset_id, 100);
+    assert_eq!(client.royalty_multiplier_bps(&dataset_id), 10000);
+
+    attest_once(&env, &contract_id, &dataset_id, 100);
+    assert_eq!(client.royalty_multiplier_bps(&dataset_id), 15000);
+}
+
+#[test]
+fn test_a_low_scoring_dataset_is_rated_rather_than_left_unrated() {
+    let (env, contract_id, dataset_id) = threshold_fixture();
+    let client = QualityOracleClient::new(&env, &contract_id);
+
+    // Unrated must not become a dumping ground: once three curators have
+    // looked, a genuinely poor dataset is Bronze, and needs_more_attestations
+    // is what tells the two cases apart.
+    for _ in 0..3 {
+        attest_once(&env, &contract_id, &dataset_id, 20);
+    }
+
+    let q = client.get_quality(&dataset_id);
+    assert_eq!(q.tier, QualityTier::Bronze);
+    assert!(!q.needs_more_attestations);
+}
+
+#[test]
+fn test_min_attestations_is_reported_so_callers_need_not_hardcode_it() {
+    let (env, contract_id, _dataset_id) = threshold_fixture();
+    assert_eq!(
+        QualityOracleClient::new(&env, &contract_id).min_attestations(),
+        3
+    );
 }

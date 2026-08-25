@@ -1415,27 +1415,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "resolve_dispute"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'commission not disputed' from contract function 'Symbol(obj#297)'"
-                },
-                {
-                  "string": "com_1"
-                },
-                {
-                  "bool": true
-                },
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
-                },
-                {
-                  "string": "ds_1"
-                }
-              ]
+              "error": {
+                "contract": 20
+              }
             }
           }
         }
@@ -1455,12 +1444,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 20
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -1480,7 +1469,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 20
                 }
               }
             ],
@@ -1528,7 +1517,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 20
                 }
               }
             ],

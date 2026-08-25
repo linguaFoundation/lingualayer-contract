@@ -186,12 +186,20 @@
                     },
                     {
                       "key": {
+                        "symbol": "needs_more_attestations"
+                      },
+                      "val": {
+                        "bool": true
+                      }
+                    },
+                    {
+                      "key": {
                         "symbol": "tier"
                       },
                       "val": {
                         "vec": [
                           {
-                            "symbol": "Silver"
+                            "symbol": "Unrated"
                           }
                         ]
                       }
@@ -920,7 +928,7 @@
                 {
                   "vec": [
                     {
-                      "symbol": "Silver"
+                      "symbol": "Unrated"
                     }
                   ]
                 }
@@ -1090,7 +1098,7 @@
                 {
                   "vec": [
                     {
-                      "symbol": "Silver"
+                      "symbol": "Unrated"
                     }
                   ]
                 }
@@ -1170,7 +1178,7 @@
             "data": {
               "vec": [
                 {
-                  "string": "caught panic 'attestation within consensus tolerance, cannot slash' from contract function 'Symbol(obj#185)'"
+                  "string": "caught panic 'attestation within consensus tolerance, cannot slash' from contract function 'Symbol(obj#191)'"
                 },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"

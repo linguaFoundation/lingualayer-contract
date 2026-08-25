@@ -3,13 +3,47 @@
 extern crate alloc;
 use alloc::format;
 use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short, token, Address, Env, String, Vec,
+    contract, contracterror, contractimpl, contracttype, symbol_short, token, Address, Env, String,
+    Vec,
 };
 
 /// A single tranche of a commission's bounty, released independently once
 /// its deliverable is verified — instead of the fulfiller waiting for the
 /// entire dataset before any payout, or the commissioner releasing the full
 /// bounty on a single unverified handoff.
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum Error {
+    AlreadyInitialized = 1,
+    NotInitialized = 2,
+    NoAdminProposalPending = 3,
+    MetadataHashCannotBeZero = 4,
+    BountyMustBePositive = 5,
+    DeadlineMustBeInTheFuture = 6,
+    CommissionNotFound = 7,
+    CommissionNotOpen = 8,
+    CommissionDeadlinePassed = 9,
+    CommissionAlreadyFulfilled = 10,
+    MustProvideAtLeastOneMilestone = 11,
+    MilestoneAmountMustBePositive = 12,
+    NewMilestonesCannotStartReleased = 13,
+    MilestoneAmountsMustSumToBounty = 14,
+    CommissionHasNoFulfillerYet = 15,
+    MilestoneIndexOutOfRange = 16,
+    MilestoneAlreadyReleased = 17,
+    OnlyCommissionerCanRaiseDispute = 18,
+    NoArbiterSet = 19,
+    CommissionNotDisputed = 20,
+    /// A state-mutating entry point was called while the contract is frozen.
+    ContractPaused = 21,
+    /// `pause` called on a contract that is already frozen.
+    AlreadyPaused = 22,
+    /// `unpause` called on a contract that is not frozen.
+    NotPaused = 23,
+}
+
 #[contracttype]
 #[derive(Clone, Debug)]
 pub struct Milestone {
@@ -55,9 +89,9 @@ pub struct DataCommission;
 
 #[contractimpl]
 impl DataCommission {
-    pub fn initialize(env: Env, admin: Address) {
+    pub fn initialize(env: Env, admin: Address) -> Result<(), Error> {
         if env.storage().instance().has(&symbol_short!("admin")) {
-            panic!("already initialized");
+            return Err(Error::AlreadyInitialized);
         }
         admin.require_auth();
         env.storage()
@@ -66,36 +100,39 @@ impl DataCommission {
         env.storage()
             .instance()
             .set(&symbol_short!("com_cnt"), &0u32);
+        Ok(())
     }
 
     /// Step 1 of admin handoff: current admin proposes a successor. The
     /// proposal must be accepted by the new admin via `accept_admin` before
     /// control actually transfers — a compromised key alone can't hand
     /// itself off without the new admin's own signature.
-    pub fn propose_admin(env: Env, new_admin: Address) {
+    pub fn propose_admin(env: Env, new_admin: Address) -> Result<(), Error> {
         let admin: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("admin"))
-            .expect("not initialized");
+            .ok_or(Error::NotInitialized)?;
         admin.require_auth();
         env.storage()
             .instance()
             .set(&symbol_short!("proposed"), &new_admin);
+        Ok(())
     }
 
     /// Step 2: the proposed admin accepts, completing the handoff.
-    pub fn accept_admin(env: Env) {
+    pub fn accept_admin(env: Env) -> Result<(), Error> {
         let proposed: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("proposed"))
-            .expect("no admin proposal pending");
+            .ok_or(Error::NoAdminProposalPending)?;
         proposed.require_auth();
         env.storage()
             .instance()
             .set(&symbol_short!("admin"), &proposed);
         env.storage().instance().remove(&symbol_short!("proposed"));
+        Ok(())
     }
 
     /// Freeze every state-mutating entry point. Admin only.
@@ -107,16 +144,16 @@ impl DataCommission {
     /// Reads stay available while paused, deliberately. Integrators and the
     /// front end need to keep answering questions about existing state during
     /// an incident, and a read cannot make the problem worse.
-    pub fn pause(env: Env) {
+    pub fn pause(env: Env) -> Result<(), Error> {
         let admin: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("admin"))
-            .expect("not initialized");
+            .ok_or(Error::NotInitialized)?;
         admin.require_auth();
 
         if Self::is_paused(env.clone()) {
-            panic!("already paused");
+            return Err(Error::AlreadyPaused);
         }
         env.storage()
             .instance()
@@ -126,19 +163,20 @@ impl DataCommission {
             (symbol_short!("pause"), symbol_short!("paused")),
             (admin, env.ledger().timestamp()),
         );
+        Ok(())
     }
 
     /// Lift the freeze. Admin only.
-    pub fn unpause(env: Env) {
+    pub fn unpause(env: Env) -> Result<(), Error> {
         let admin: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("admin"))
-            .expect("not initialized");
+            .ok_or(Error::NotInitialized)?;
         admin.require_auth();
 
         if !Self::is_paused(env.clone()) {
-            panic!("not paused");
+            return Err(Error::NotPaused);
         }
         env.storage()
             .instance()
@@ -148,6 +186,7 @@ impl DataCommission {
             (symbol_short!("pause"), symbol_short!("unpaused")),
             (admin, env.ledger().timestamp()),
         );
+        Ok(())
     }
 
     /// Whether writes are currently frozen. A read, so it answers while paused.
@@ -164,15 +203,11 @@ impl DataCommission {
     /// call whoever is making it, so there is no reason to do the more
     /// expensive auth work first, and no signature is consumed by a call that
     /// was never going to land.
-    fn require_not_paused(env: &Env) {
-        if env
-            .storage()
-            .instance()
-            .get(&symbol_short!("paused"))
-            .unwrap_or(false)
-        {
-            panic!("contract paused");
+    fn require_not_paused(env: &Env) -> Result<(), Error> {
+        if Self::is_paused(env.clone()) {
+            return Err(Error::ContractPaused);
         }
+        Ok(())
     }
 
     /// Post a new data commission with USDC bounty.
@@ -186,19 +221,19 @@ impl DataCommission {
         min_sample_count: u32,
         min_duration_seconds: u32,
         deadline_ledger: u32,
-    ) -> String {
-        Self::require_not_paused(&env);
+    ) -> Result<String, Error> {
+        Self::require_not_paused(&env)?;
         commissioner.require_auth();
 
         if description_hash == soroban_sdk::BytesN::from_array(&env, &[0u8; 32]) {
-            panic!("metadata hash cannot be zero");
+            return Err(Error::MetadataHashCannotBeZero);
         }
 
         if bounty_amount <= 0 {
-            panic!("bounty must be positive");
+            return Err(Error::BountyMustBePositive);
         }
         if deadline_ledger <= env.ledger().sequence() {
-            panic!("deadline must be in the future");
+            return Err(Error::DeadlineMustBeInTheFuture);
         }
 
         // Transfer bounty into contract escrow
@@ -245,7 +280,7 @@ impl DataCommission {
             (id.clone(), language_code, bounty_amount),
         );
 
-        id
+        Ok(id)
     }
 
     /// Fulfil a commission — admin verifies delivery and releases escrow.
@@ -254,26 +289,26 @@ impl DataCommission {
         commission_id: String,
         fulfiller: Address,
         dataset_id: String,
-    ) {
-        Self::require_not_paused(&env);
+    ) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let admin: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("admin"))
-            .expect("not initialized");
+            .ok_or(Error::NotInitialized)?;
         admin.require_auth();
 
         let mut comm: Commission = env
             .storage()
             .persistent()
             .get(&commission_id)
-            .expect("commission not found");
+            .ok_or(Error::CommissionNotFound)?;
 
         if comm.state != CommissionState::Open {
-            panic!("commission not open");
+            return Err(Error::CommissionNotOpen);
         }
         if env.ledger().sequence() > comm.deadline_ledger {
-            panic!("commission deadline passed");
+            return Err(Error::CommissionDeadlinePassed);
         }
 
         comm.fulfiller = Some(fulfiller.clone());
@@ -300,19 +335,20 @@ impl DataCommission {
             (symbol_short!("comm"), symbol_short!("fulfilled")),
             (commission_id, fulfiller, dataset_id, comm.bounty_amount),
         );
+        Ok(())
     }
 
     /// Cancel an expired commission and refund the commissioner.
-    pub fn cancel_commission(env: Env, commission_id: String) {
-        Self::require_not_paused(&env);
+    pub fn cancel_commission(env: Env, commission_id: String) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let mut comm: Commission = env
             .storage()
             .persistent()
             .get(&commission_id)
-            .expect("commission not found");
+            .ok_or(Error::CommissionNotFound)?;
 
         if comm.state != CommissionState::Open {
-            panic!("commission not open");
+            return Err(Error::CommissionNotOpen);
         }
 
         // Only cancel if past deadline
@@ -346,40 +382,45 @@ impl DataCommission {
             (symbol_short!("comm"), symbol_short!("cancelled")),
             commission_id,
         );
+        Ok(())
     }
 
     /// Split a commission's bounty into independently-released tranches.
     /// Must be called before fulfil_commission — once a fulfiller is
     /// assigned, the milestone set for that commission is locked in.
-    pub fn set_milestones(env: Env, commission_id: String, milestones: Vec<Milestone>) {
-        Self::require_not_paused(&env);
+    pub fn set_milestones(
+        env: Env,
+        commission_id: String,
+        milestones: Vec<Milestone>,
+    ) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let mut comm: Commission = env
             .storage()
             .persistent()
             .get(&commission_id)
-            .expect("commission not found");
+            .ok_or(Error::CommissionNotFound)?;
 
         comm.commissioner.require_auth();
 
         if comm.state != CommissionState::Open || comm.fulfiller.is_some() {
-            panic!("commission already fulfilled");
+            return Err(Error::CommissionAlreadyFulfilled);
         }
         if milestones.is_empty() {
-            panic!("must provide at least one milestone");
+            return Err(Error::MustProvideAtLeastOneMilestone);
         }
 
         let mut total: i128 = 0;
         for m in milestones.iter() {
             if m.amount <= 0 {
-                panic!("milestone amount must be positive");
+                return Err(Error::MilestoneAmountMustBePositive);
             }
             if m.released {
-                panic!("new milestones cannot start released");
+                return Err(Error::NewMilestonesCannotStartReleased);
             }
             total += m.amount;
         }
         if total != comm.bounty_amount {
-            panic!("milestone amounts must sum to the bounty amount");
+            return Err(Error::MilestoneAmountsMustSumToBounty);
         }
 
         comm.milestones = milestones;
@@ -389,6 +430,7 @@ impl DataCommission {
             (symbol_short!("comm"), symbol_short!("mstones")),
             commission_id,
         );
+        Ok(())
     }
 
     /// Release one milestone's tranche to the fulfiller. Admin-gated for the
@@ -396,39 +438,43 @@ impl DataCommission {
     /// that the off-chain deliverable for this tranche was actually
     /// verified. The final milestone's release also marks the commission
     /// Fulfilled.
-    pub fn release_milestone(env: Env, commission_id: String, milestone_index: u32) {
-        Self::require_not_paused(&env);
+    pub fn release_milestone(
+        env: Env,
+        commission_id: String,
+        milestone_index: u32,
+    ) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let admin: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("admin"))
-            .expect("not initialized");
+            .ok_or(Error::NotInitialized)?;
         admin.require_auth();
 
         let mut comm: Commission = env
             .storage()
             .persistent()
             .get(&commission_id)
-            .expect("commission not found");
+            .ok_or(Error::CommissionNotFound)?;
 
         if comm.state != CommissionState::Open {
-            panic!("commission not open");
+            return Err(Error::CommissionNotOpen);
         }
         let fulfiller = comm
             .fulfiller
             .clone()
-            .expect("commission has no fulfiller yet");
+            .ok_or(Error::CommissionHasNoFulfillerYet)?;
 
         let idx = milestone_index as usize;
         if idx >= comm.milestones.len() as usize {
-            panic!("milestone index out of range");
+            return Err(Error::MilestoneIndexOutOfRange);
         }
         let mut milestone = comm
             .milestones
             .get(milestone_index)
-            .expect("milestone index out of range");
+            .ok_or(Error::MilestoneIndexOutOfRange)?;
         if milestone.released {
-            panic!("milestone already released");
+            return Err(Error::MilestoneAlreadyReleased);
         }
 
         let tok = token::Client::new(&env, &comm.bounty_token);
@@ -451,26 +497,28 @@ impl DataCommission {
             (symbol_short!("comm"), symbol_short!("mrelease")),
             (commission_id, milestone_index, milestone.amount),
         );
+        Ok(())
     }
 
-    pub fn get_commission(env: Env, commission_id: String) -> Commission {
+    pub fn get_commission(env: Env, commission_id: String) -> Result<Commission, Error> {
         env.storage()
             .persistent()
             .get(&commission_id)
-            .expect("commission not found")
+            .ok_or(Error::CommissionNotFound)?
     }
 
     /// Extend a commission's storage TTL. Permissionless — anyone may call
     /// this to keep a commission they care about from expiring off
     /// persistent storage; extending an entry's lifetime can't be abused
     /// the way mutating it could, so there's no auth requirement.
-    pub fn renew_commission_ttl(env: Env, commission_id: String) {
+    pub fn renew_commission_ttl(env: Env, commission_id: String) -> Result<(), Error> {
         if !env.storage().persistent().has(&commission_id) {
-            panic!("commission not found");
+            return Err(Error::CommissionNotFound);
         }
         env.storage()
             .persistent()
             .extend_ttl(&commission_id, 7_776_000, 7_776_000);
+        Ok(())
     }
 
     pub fn commission_count(env: Env) -> u32 {
@@ -481,7 +529,7 @@ impl DataCommission {
     }
 
     pub fn version(_env: Env) -> u32 {
-        3
+        2
     }
 
     pub fn upgrade(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
@@ -501,13 +549,13 @@ impl DataCommission {
 
     /// Designate the address that can rule on disputed commissions.
     /// Admin-gated; callable again to rotate the arbiter.
-    pub fn set_arbiter(env: Env, arbiter: Address) {
-        Self::require_not_paused(&env);
+    pub fn set_arbiter(env: Env, arbiter: Address) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let admin: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("admin"))
-            .expect("not initialized");
+            .ok_or(Error::NotInitialized)?;
         admin.require_auth();
 
         env.storage()
@@ -516,27 +564,28 @@ impl DataCommission {
 
         env.events()
             .publish((symbol_short!("comm"), symbol_short!("arbiter")), arbiter);
+        Ok(())
     }
 
     /// The commissioner flags a commission as disputed — e.g. they believe
     /// the fulfiller's delivery doesn't meet the commission's requirements.
     /// Only valid while Open (before the admin has released any funds);
     /// freezes the commission until the arbiter rules on it.
-    pub fn raise_dispute(env: Env, commission_id: String, raised_by: Address) {
-        Self::require_not_paused(&env);
+    pub fn raise_dispute(env: Env, commission_id: String, raised_by: Address) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         raised_by.require_auth();
 
         let mut comm: Commission = env
             .storage()
             .persistent()
             .get(&commission_id)
-            .expect("commission not found");
+            .ok_or(Error::CommissionNotFound)?;
 
         if raised_by != comm.commissioner {
-            panic!("only the commissioner can raise a dispute");
+            return Err(Error::OnlyCommissionerCanRaiseDispute);
         }
         if comm.state != CommissionState::Open {
-            panic!("commission not open");
+            return Err(Error::CommissionNotOpen);
         }
 
         comm.state = CommissionState::Disputed;
@@ -546,6 +595,7 @@ impl DataCommission {
             (symbol_short!("comm"), symbol_short!("disputed")),
             commission_id,
         );
+        Ok(())
     }
 
     /// The arbiter rules on a disputed commission: either award the full
@@ -558,23 +608,23 @@ impl DataCommission {
         award_to_fulfiller: bool,
         fulfiller: Address,
         dataset_id: String,
-    ) {
-        Self::require_not_paused(&env);
+    ) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let arbiter: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("arbiter"))
-            .expect("no arbiter set");
+            .ok_or(Error::NoArbiterSet)?;
         arbiter.require_auth();
 
         let mut comm: Commission = env
             .storage()
             .persistent()
             .get(&commission_id)
-            .expect("commission not found");
+            .ok_or(Error::CommissionNotFound)?;
 
         if comm.state != CommissionState::Disputed {
-            panic!("commission not disputed");
+            return Err(Error::CommissionNotDisputed);
         }
 
         let tok = token::Client::new(&env, &comm.bounty_token);
@@ -602,6 +652,7 @@ impl DataCommission {
             (symbol_short!("comm"), symbol_short!("resolved")),
             (commission_id, award_to_fulfiller),
         );
+        Ok(())
     }
 }
 

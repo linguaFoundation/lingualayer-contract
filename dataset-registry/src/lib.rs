@@ -2,7 +2,9 @@
 #![allow(clippy::too_many_arguments)]
 extern crate alloc;
 use alloc::format;
-use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, Env, String, Vec};
+use soroban_sdk::{
+    contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env, String, Vec,
+};
 
 /// How long persistent entries live before they can be archived:
 /// 7,776,000 ledgers ≈ 90 days at ~1s/ledger.
@@ -10,6 +12,36 @@ const PERSISTENT_TTL: u32 = 7_776_000;
 
 /// Total contributor shares must add up to this, in basis points.
 const TOTAL_BPS: u32 = 10_000;
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum Error {
+    AlreadyInitialized = 1,
+    NotInitialized = 2,
+    NoAdminProposalPending = 3,
+    MetadataHashCannotBeZero = 4,
+    DatasetWithThisMetadataHashIsAlreadyRegistered = 5,
+    DatasetMustHaveAtLeastOneContributor = 6,
+    ContributorShareMustBeGreaterThanZero = 7,
+    DuplicateContributorAddress = 8,
+    ContributorSharesOverflow = 9,
+    ContributorSharesMustSumTo10000 = 10,
+    NoReputationData = 11,
+    DatasetNotFound = 12,
+    DatasetMustBeActiveToUpdateMetadata = 13,
+    MetadataHashUnchanged = 14,
+    OnlyAnActiveDatasetCanBeFlaggedForReview = 15,
+    OnlyADatasetUnderReviewCanBeReinstated = 16,
+    OnlyTheDatasetOwnerOrAdminCanDeprecate = 17,
+    DatasetIsAlreadyDeprecated = 18,
+    /// A state-mutating entry point was called while the contract is frozen.
+    ContractPaused = 19,
+    /// `pause` called on a contract that is already frozen.
+    AlreadyPaused = 20,
+    /// `unpause` called on a contract that is not frozen.
+    NotPaused = 21,
+}
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -81,9 +113,9 @@ pub struct DatasetRegistry;
 
 #[contractimpl]
 impl DatasetRegistry {
-    pub fn initialize(env: Env, admin: Address) {
+    pub fn initialize(env: Env, admin: Address) -> Result<(), Error> {
         if env.storage().instance().has(&symbol_short!("admin")) {
-            panic!("already initialized");
+            return Err(Error::AlreadyInitialized);
         }
         admin.require_auth();
         env.storage()
@@ -91,32 +123,35 @@ impl DatasetRegistry {
             .set(&symbol_short!("admin"), &admin);
         env.storage().instance().set(&symbol_short!("count"), &0u32);
         Self::bump_instance(&env);
+        Ok(())
     }
 
     /// Step 1 of admin handoff: current admin proposes a successor. The
     /// proposal must be accepted by the new admin via `accept_admin` before
     /// control actually transfers — a compromised key alone can't hand
     /// itself off without the new admin's own signature.
-    pub fn propose_admin(env: Env, new_admin: Address) {
-        let admin = Self::admin(&env);
+    pub fn propose_admin(env: Env, new_admin: Address) -> Result<(), Error> {
+        let admin = Self::admin(&env)?;
         admin.require_auth();
         env.storage()
             .instance()
             .set(&symbol_short!("proposed"), &new_admin);
+        Ok(())
     }
 
     /// Step 2: the proposed admin accepts, completing the handoff.
-    pub fn accept_admin(env: Env) {
+    pub fn accept_admin(env: Env) -> Result<(), Error> {
         let proposed: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("proposed"))
-            .expect("no admin proposal pending");
+            .ok_or(Error::NoAdminProposalPending)?;
         proposed.require_auth();
         env.storage()
             .instance()
             .set(&symbol_short!("admin"), &proposed);
         env.storage().instance().remove(&symbol_short!("proposed"));
+        Ok(())
     }
 
     /// Freeze every state-mutating entry point. Admin only.
@@ -128,16 +163,16 @@ impl DatasetRegistry {
     /// Reads stay available while paused, deliberately. Integrators and the
     /// front end need to keep answering questions about existing state during
     /// an incident, and a read cannot make the problem worse.
-    pub fn pause(env: Env) {
+    pub fn pause(env: Env) -> Result<(), Error> {
         let admin: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("admin"))
-            .expect("not initialized");
+            .ok_or(Error::NotInitialized)?;
         admin.require_auth();
 
         if Self::is_paused(env.clone()) {
-            panic!("already paused");
+            return Err(Error::AlreadyPaused);
         }
         env.storage()
             .instance()
@@ -147,19 +182,20 @@ impl DatasetRegistry {
             (symbol_short!("pause"), symbol_short!("paused")),
             (admin, env.ledger().timestamp()),
         );
+        Ok(())
     }
 
     /// Lift the freeze. Admin only.
-    pub fn unpause(env: Env) {
+    pub fn unpause(env: Env) -> Result<(), Error> {
         let admin: Address = env
             .storage()
             .instance()
             .get(&symbol_short!("admin"))
-            .expect("not initialized");
+            .ok_or(Error::NotInitialized)?;
         admin.require_auth();
 
         if !Self::is_paused(env.clone()) {
-            panic!("not paused");
+            return Err(Error::NotPaused);
         }
         env.storage()
             .instance()
@@ -169,6 +205,7 @@ impl DatasetRegistry {
             (symbol_short!("pause"), symbol_short!("unpaused")),
             (admin, env.ledger().timestamp()),
         );
+        Ok(())
     }
 
     /// Whether writes are currently frozen. A read, so it answers while paused.
@@ -185,26 +222,22 @@ impl DatasetRegistry {
     /// call whoever is making it, so there is no reason to do the more
     /// expensive auth work first, and no signature is consumed by a call that
     /// was never going to land.
-    fn require_not_paused(env: &Env) {
-        if env
-            .storage()
-            .instance()
-            .get(&symbol_short!("paused"))
-            .unwrap_or(false)
-        {
-            panic!("contract paused");
+    fn require_not_paused(env: &Env) -> Result<(), Error> {
+        if Self::is_paused(env.clone()) {
+            return Err(Error::ContractPaused);
         }
+        Ok(())
     }
 
     /// Read the configured admin, panicking if the contract was never
     /// initialized. Every admin-gated entry point goes through here so an
     /// uninitialized contract fails with one consistent message instead of
     /// falling through to an unauthorized state.
-    fn admin(env: &Env) -> Address {
+    fn admin(env: &Env) -> Result<Address, Error> {
         env.storage()
             .instance()
             .get(&symbol_short!("admin"))
-            .expect("not initialized")
+            .ok_or(Error::NotInitialized)?
     }
 
     pub fn register_dataset(
@@ -217,17 +250,17 @@ impl DatasetRegistry {
         sample_count: u32,
         duration_seconds: u32,
         commission_id: Option<String>,
-    ) -> String {
-        Self::require_not_paused(&env);
+    ) -> Result<String, Error> {
+        Self::require_not_paused(&env)?;
         owner.require_auth();
 
         // Registration is admin-gated at the contract level only in the sense
         // that the registry must exist; refusing here keeps `count` and the
         // admin key in a consistent initialized state.
-        let _ = Self::admin(&env);
+        let _ = Self::admin(&env)?;
 
         if metadata_hash == soroban_sdk::BytesN::from_array(&env, &[0u8; 32]) {
-            panic!("metadata hash cannot be zero");
+            return Err(Error::MetadataHashCannotBeZero);
         }
 
         // Reject a dataset already registered under this exact metadata
@@ -236,10 +269,10 @@ impl DatasetRegistry {
         // commission-fulfilment credit for one piece of underlying work.
         let hash_key = String::from_str(&env, &format!("hash_{:?}", metadata_hash));
         if env.storage().persistent().has(&hash_key) {
-            panic!("dataset with this metadata hash is already registered");
+            return Err(Error::DatasetWithThisMetadataHashIsAlreadyRegistered);
         }
 
-        Self::validate_shares(&contributors);
+        Self::validate_shares(&contributors)?;
 
         let count: u32 = env
             .storage()
@@ -277,28 +310,28 @@ impl DatasetRegistry {
             .extend_ttl(&hash_key, PERSISTENT_TTL, PERSISTENT_TTL);
 
         // Update owner reputation
-        Self::increment_reputation(&env, &owner);
+        Self::increment_reputation(&env, &owner)?;
 
         env.events().publish(
             (symbol_short!("dataset"), symbol_short!("created")),
             (id.clone(), owner, language_code, sample_count),
         );
-        id
+        Ok(id)
     }
 
     /// Contributor shares are the input the royalty splitter trusts, so they
     /// are validated strictly rather than merely summed: an empty set, a
     /// zero-weight entry, or a duplicated address would each produce a split
     /// that silently misallocates funds later.
-    fn validate_shares(contributors: &Vec<ContributorShare>) {
+    fn validate_shares(contributors: &Vec<ContributorShare>) -> Result<(), Error> {
         if contributors.is_empty() {
-            panic!("dataset must have at least one contributor");
+            return Err(Error::DatasetMustHaveAtLeastOneContributor);
         }
 
         let mut total: u32 = 0;
         for (i, c) in contributors.iter().enumerate() {
             if c.share_bps == 0 {
-                panic!("contributor share must be greater than zero");
+                return Err(Error::ContributorShareMustBeGreaterThanZero);
             }
             // A duplicated address would pass the 10000 bps check while
             // concentrating payout in one party under two entries, so reject
@@ -307,22 +340,23 @@ impl DatasetRegistry {
             // cheap in practice.
             for (j, other) in contributors.iter().enumerate() {
                 if i < j && c.address == other.address {
-                    panic!("duplicate contributor address");
+                    return Err(Error::DuplicateContributorAddress);
                 }
             }
             // Checked so an oversized list can never wrap past 10000 and pass
             // validation with an absurd allocation.
             total = total
                 .checked_add(c.share_bps)
-                .expect("contributor shares overflow");
+                .ok_or(Error::ContributorSharesOverflow)?;
         }
 
         if total != TOTAL_BPS {
-            panic!("contributor shares must sum to 10000 bps");
+            return Err(Error::ContributorSharesMustSumTo10000);
         }
+        Ok(())
     }
 
-    fn increment_reputation(env: &Env, address: &Address) {
+    fn increment_reputation(env: &Env, address: &Address) -> Result<(), Error> {
         let rep_key = String::from_str(env, &format!("rep_{:?}", address));
         let mut rep: ContributorReputation =
             env.storage()
@@ -341,21 +375,22 @@ impl DatasetRegistry {
         env.storage()
             .persistent()
             .extend_ttl(&rep_key, PERSISTENT_TTL, PERSISTENT_TTL);
+        Ok(())
     }
 
-    pub fn get_reputation(env: Env, address: Address) -> ContributorReputation {
+    pub fn get_reputation(env: Env, address: Address) -> Result<ContributorReputation, Error> {
         let rep_key = String::from_str(&env, &format!("rep_{:?}", address));
         env.storage()
             .persistent()
             .get(&rep_key)
-            .expect("no reputation data")
+            .ok_or(Error::NoReputationData)?
     }
 
-    pub fn get_dataset(env: Env, dataset_id: String) -> Dataset {
+    pub fn get_dataset(env: Env, dataset_id: String) -> Result<Dataset, Error> {
         env.storage()
             .persistent()
             .get(&dataset_id)
-            .expect("dataset not found")
+            .ok_or(Error::DatasetNotFound)?
     }
 
     pub fn dataset_count(env: Env) -> u32 {
@@ -374,13 +409,17 @@ impl DatasetRegistry {
     }
 
     /// Current lifecycle state of a dataset.
-    pub fn get_state(env: Env, dataset_id: String) -> DatasetState {
-        Self::load(&env, &dataset_id).state
+    pub fn get_state(env: Env, dataset_id: String) -> Result<DatasetState, Error> {
+        Ok(Self::load(&env, &dataset_id)?.state)
     }
 
-    pub fn update_metadata(env: Env, dataset_id: String, new_hash: soroban_sdk::BytesN<32>) {
-        Self::require_not_paused(&env);
-        let mut ds = Self::load(&env, &dataset_id);
+    pub fn update_metadata(
+        env: Env,
+        dataset_id: String,
+        new_hash: soroban_sdk::BytesN<32>,
+    ) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
+        let mut ds = Self::load(&env, &dataset_id)?;
         ds.owner.require_auth();
 
         // Content may only change while the dataset is Active. Allowing it
@@ -388,14 +427,14 @@ impl DatasetRegistry {
         // is evaluating; allowing it after deprecation would resurrect a
         // record downstream contracts have already written off.
         if ds.state != DatasetState::Active {
-            panic!("dataset must be active to update metadata");
+            return Err(Error::DatasetMustBeActiveToUpdateMetadata);
         }
 
         if new_hash == soroban_sdk::BytesN::from_array(&env, &[0u8; 32]) {
-            panic!("metadata hash cannot be zero");
+            return Err(Error::MetadataHashCannotBeZero);
         }
         if new_hash == ds.metadata_hash {
-            panic!("metadata hash unchanged");
+            return Err(Error::MetadataHashUnchanged);
         }
 
         // Move the hash index with the dataset so `dataset_id_for_hash` stays
@@ -403,7 +442,7 @@ impl DatasetRegistry {
         // dataset, while the new hash still can't collide with another entry.
         let new_key = String::from_str(&env, &format!("hash_{:?}", new_hash));
         if env.storage().persistent().has(&new_key) {
-            panic!("dataset with this metadata hash is already registered");
+            return Err(Error::DatasetWithThisMetadataHashIsAlreadyRegistered);
         }
         let old_key = String::from_str(&env, &format!("hash_{:?}", ds.metadata_hash));
         env.storage().persistent().remove(&old_key);
@@ -421,18 +460,19 @@ impl DatasetRegistry {
             (symbol_short!("dataset"), symbol_short!("updated")),
             (dataset_id, new_hash, version),
         );
+        Ok(())
     }
 
     /// Admin flags an Active dataset for review — a reversible hold that
     /// freezes metadata updates without permanently retiring the record.
-    pub fn flag_dataset(env: Env, dataset_id: String) {
-        Self::require_not_paused(&env);
-        let admin = Self::admin(&env);
+    pub fn flag_dataset(env: Env, dataset_id: String) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
+        let admin = Self::admin(&env)?;
         admin.require_auth();
 
-        let mut ds = Self::load(&env, &dataset_id);
+        let mut ds = Self::load(&env, &dataset_id)?;
         if ds.state != DatasetState::Active {
-            panic!("only an active dataset can be flagged for review");
+            return Err(Error::OnlyAnActiveDatasetCanBeFlaggedForReview);
         }
         ds.state = DatasetState::UnderReview;
         Self::save(&env, &dataset_id, &ds);
@@ -441,17 +481,18 @@ impl DatasetRegistry {
             (symbol_short!("dataset"), symbol_short!("flagged")),
             dataset_id,
         );
+        Ok(())
     }
 
     /// Admin clears a review, returning the dataset to Active.
-    pub fn reinstate_dataset(env: Env, dataset_id: String) {
-        Self::require_not_paused(&env);
-        let admin = Self::admin(&env);
+    pub fn reinstate_dataset(env: Env, dataset_id: String) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
+        let admin = Self::admin(&env)?;
         admin.require_auth();
 
-        let mut ds = Self::load(&env, &dataset_id);
+        let mut ds = Self::load(&env, &dataset_id)?;
         if ds.state != DatasetState::UnderReview {
-            panic!("only a dataset under review can be reinstated");
+            return Err(Error::OnlyADatasetUnderReviewCanBeReinstated);
         }
         ds.state = DatasetState::Active;
         Self::save(&env, &dataset_id, &ds);
@@ -460,6 +501,7 @@ impl DatasetRegistry {
             (symbol_short!("dataset"), symbol_short!("reinstate")),
             dataset_id,
         );
+        Ok(())
     }
 
     /// Retire a dataset permanently. Either the dataset owner or the protocol
@@ -467,20 +509,20 @@ impl DatasetRegistry {
     /// probed conditionally, so the caller declares which identity it is
     /// acting as and that identity both signs and is checked against the two
     /// permitted roles.
-    pub fn deprecate_dataset(env: Env, dataset_id: String, caller: Address) {
-        Self::require_not_paused(&env);
+    pub fn deprecate_dataset(env: Env, dataset_id: String, caller: Address) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         caller.require_auth();
 
-        let mut ds = Self::load(&env, &dataset_id);
-        let admin = Self::admin(&env);
+        let mut ds = Self::load(&env, &dataset_id)?;
+        let admin = Self::admin(&env)?;
         if caller != ds.owner && caller != admin {
-            panic!("only the dataset owner or admin can deprecate");
+            return Err(Error::OnlyTheDatasetOwnerOrAdminCanDeprecate);
         }
 
         // Terminal state — re-deprecating would emit a second event and let
         // downstream listeners double-count a retirement that already happened.
         if ds.state == DatasetState::Deprecated {
-            panic!("dataset is already deprecated");
+            return Err(Error::DatasetIsAlreadyDeprecated);
         }
 
         ds.state = DatasetState::Deprecated;
@@ -490,6 +532,7 @@ impl DatasetRegistry {
             (symbol_short!("dataset"), symbol_short!("deprecate")),
             dataset_id,
         );
+        Ok(())
     }
 
     /// Permissionlessly extend a dataset's storage lifetime.
@@ -503,13 +546,13 @@ impl DatasetRegistry {
     /// `hash_{metadata_hash}` expire while the dataset survives would leave
     /// `dataset_id_for_hash` silently returning None for a live dataset, and
     /// free its hash for re-registration by an unrelated one.
-    pub fn renew_dataset_ttl(env: Env, dataset_id: String) {
+    pub fn renew_dataset_ttl(env: Env, dataset_id: String) -> Result<(), Error> {
         Self::bump_instance(&env);
         let ds: Dataset = env
             .storage()
             .persistent()
             .get(&dataset_id)
-            .expect("dataset not found");
+            .ok_or(Error::DatasetNotFound)?;
 
         env.storage()
             .persistent()
@@ -521,20 +564,22 @@ impl DatasetRegistry {
                 .persistent()
                 .extend_ttl(&hash_key, PERSISTENT_TTL, PERSISTENT_TTL);
         }
+        Ok(())
     }
 
     /// Permissionlessly extend a contributor's reputation entry. Reputation
     /// only accrues on registration, so a prolific early contributor who then
     /// goes quiet is exactly the account whose history would otherwise lapse.
-    pub fn renew_reputation_ttl(env: Env, address: Address) {
+    pub fn renew_reputation_ttl(env: Env, address: Address) -> Result<(), Error> {
         Self::bump_instance(&env);
         let rep_key = String::from_str(&env, &format!("rep_{:?}", address));
         if !env.storage().persistent().has(&rep_key) {
-            panic!("no reputation data");
+            return Err(Error::NoReputationData);
         }
         env.storage()
             .persistent()
             .extend_ttl(&rep_key, PERSISTENT_TTL, PERSISTENT_TTL);
+        Ok(())
     }
 
     /// Refresh the contract's own instance entry (admin, dataset counter) on
@@ -551,11 +596,11 @@ impl DatasetRegistry {
             .extend_ttl(PERSISTENT_TTL, PERSISTENT_TTL);
     }
 
-    fn load(env: &Env, dataset_id: &String) -> Dataset {
+    fn load(env: &Env, dataset_id: &String) -> Result<Dataset, Error> {
         env.storage()
             .persistent()
             .get(dataset_id)
-            .expect("dataset not found")
+            .ok_or(Error::DatasetNotFound)?
     }
 
     /// Write a dataset back and refresh its TTL in one place, so no mutating
@@ -569,11 +614,11 @@ impl DatasetRegistry {
     }
 
     pub fn version(_env: Env) -> u32 {
-        4
+        3
     }
 
     pub fn upgrade(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
-        let admin = Self::admin(&env);
+        let admin = Self::admin(&env).expect("not initialized");
         admin.require_auth();
         env.deployer()
             .update_current_contract_wasm(new_wasm_hash.clone());

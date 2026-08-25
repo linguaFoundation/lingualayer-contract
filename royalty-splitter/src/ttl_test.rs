@@ -106,7 +106,7 @@ fn test_renew_split_ttl_is_permissionless() {
 }
 
 #[test]
-#[should_panic(expected = "no split config for dataset")]
+#[should_panic(expected = "Error(Contract, #5)")]
 fn test_renew_split_ttl_unknown_dataset_panics() {
     let f = setup();
     f.client
@@ -128,7 +128,7 @@ fn test_renew_payout_ttl_is_permissionless() {
 }
 
 #[test]
-#[should_panic(expected = "payout record not found")]
+#[should_panic(expected = "Error(Contract, #8)")]
 fn test_renew_payout_ttl_unknown_record_panics() {
     let f = setup();
     f.client.renew_payout_ttl(&99);

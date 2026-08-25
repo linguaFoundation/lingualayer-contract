@@ -11,16 +11,20 @@ fix.
 Identical in all five contracts, so an operator running the freeze during an
 incident does not have to remember per-contract differences:
 
-| Function | Auth | Notes |
+| Function | Auth | Returns |
 | --- | --- | --- |
-| `pause()` | admin | Panics `already paused` if already frozen |
-| `unpause()` | admin | Panics `not paused` if not frozen |
+| `pause()` | admin | `Err(Error::AlreadyPaused)` if already frozen |
+| `unpause()` | admin | `Err(Error::NotPaused)` if not frozen |
 | `is_paused() -> bool` | none | A read, so it answers while paused |
 
 Both transitions emit an event carrying the admin address and the ledger
 timestamp: `("pause", "paused")` and `("pause", "unpaused")`.
 
-Frozen writes panic with `contract paused`.
+Frozen writes return `Err(Error::ContractPaused)`, following the typed-error
+convention the contracts adopted when panics were refactored into
+`#[contracterror]` variants. `slash_curator` is the one exception: it still
+returns `()` and signals failure by panicking, so its pause check panics too
+rather than introducing a second error style inside one function.
 
 ## What the freeze covers
 
