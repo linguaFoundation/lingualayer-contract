@@ -41,6 +41,8 @@ pub enum Error {
     AlreadyPaused = 20,
     /// `unpause` called on a contract that is not frozen.
     NotPaused = 21,
+    /// Language code is not exactly 3 ASCII lowercase letters (ISO 639-3).
+    InvalidLanguageCode = 22,
 }
 
 #[contracttype]
@@ -229,6 +231,24 @@ impl DatasetRegistry {
         Ok(())
     }
 
+    /// Validate that `code` is exactly 3 ASCII lowercase letters (ISO 639-3).
+    ///
+    /// ISO 639-3 codes are always 3 characters, all ASCII a-z. Anything else
+    /// — wrong length, digits, uppercase, non-ASCII — is rejected so that
+    /// downstream analytics keys are compact and unambiguous.
+    fn validate_language_code(code: &String) -> Result<(), Error> {
+        if code.len() != 3 {
+            return Err(Error::InvalidLanguageCode);
+        }
+        for byte_val in code.iter() {
+            // ASCII 'a' = 97, 'z' = 122
+            if !(97u32..=122u32).contains(&byte_val) {
+                return Err(Error::InvalidLanguageCode);
+            }
+        }
+        Ok(())
+    }
+
     /// Read the configured admin, panicking if the contract was never
     /// initialized. Every admin-gated entry point goes through here so an
     /// uninitialized contract fails with one consistent message instead of
@@ -252,6 +272,8 @@ impl DatasetRegistry {
         commission_id: Option<String>,
     ) -> Result<String, Error> {
         Self::require_not_paused(&env)?;
+        // Validate language code before any auth or storage work.
+        Self::validate_language_code(&language_code)?;
         owner.require_auth();
 
         // Registration is admin-gated at the contract level only in the sense

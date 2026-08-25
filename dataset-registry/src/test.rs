@@ -771,3 +771,86 @@ fn test_upgrade_unauthorized_not_initialized() {
     
     client.upgrade(&wasm_hash);
 }
+
+// ---------------------------------------------------------------------------
+// Language code validation (#10)
+// ---------------------------------------------------------------------------
+
+#[test]
+#[should_panic(expected = "Error(Contract, #22)")]
+fn test_register_dataset_two_char_code_rejected() {
+    let env = Env::default();
+    let (client, _admin) = setup(&env);
+    let owner = Address::generate(&env);
+
+    client.register_dataset(
+        &owner,
+        &String::from_str(&env, "en"), // 2 chars — invalid
+        &String::from_str(&env, "Short Code Dataset"),
+        &hash_of(&env, 91),
+        &sole_contributor(&env, &owner),
+        &100,
+        &3600,
+        &None,
+    );
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #22)")]
+fn test_register_dataset_four_char_code_rejected() {
+    let env = Env::default();
+    let (client, _admin) = setup(&env);
+    let owner = Address::generate(&env);
+
+    client.register_dataset(
+        &owner,
+        &String::from_str(&env, "engl"), // 4 chars — invalid
+        &String::from_str(&env, "Long Code Dataset"),
+        &hash_of(&env, 92),
+        &sole_contributor(&env, &owner),
+        &100,
+        &3600,
+        &None,
+    );
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #22)")]
+fn test_register_dataset_uppercase_code_rejected() {
+    let env = Env::default();
+    let (client, _admin) = setup(&env);
+    let owner = Address::generate(&env);
+
+    client.register_dataset(
+        &owner,
+        &String::from_str(&env, "YOR"), // uppercase — invalid
+        &String::from_str(&env, "Uppercase Code Dataset"),
+        &hash_of(&env, 93),
+        &sole_contributor(&env, &owner),
+        &100,
+        &3600,
+        &None,
+    );
+}
+
+#[test]
+fn test_register_dataset_valid_iso639_3_code_succeeds() {
+    let env = Env::default();
+    let (client, _admin) = setup(&env);
+    let owner = Address::generate(&env);
+
+    // "yor" = Yoruba, a valid ISO 639-3 code
+    let id = client.register_dataset(
+        &owner,
+        &String::from_str(&env, "yor"),
+        &String::from_str(&env, "Yoruba Speech Corpus"),
+        &hash_of(&env, 94),
+        &sole_contributor(&env, &owner),
+        &500,
+        &7200,
+        &None,
+    );
+
+    let ds = client.get_dataset(&id);
+    assert_eq!(ds.language_code, String::from_str(&env, "yor"));
+}
