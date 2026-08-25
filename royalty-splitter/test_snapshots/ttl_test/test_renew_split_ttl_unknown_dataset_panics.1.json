@@ -1047,18 +1047,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "renew_split_ttl"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'no split config for dataset' from contract function 'Symbol(obj#201)'"
-                },
-                {
-                  "string": "ds_nope"
-                }
-              ]
+              "error": {
+                "contract": 5
+              }
             }
           }
         }
@@ -1078,12 +1076,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 5
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -1103,7 +1101,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 5
                 }
               }
             ],
@@ -1142,7 +1140,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 5
                 }
               }
             ],

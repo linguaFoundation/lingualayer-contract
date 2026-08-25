@@ -4,7 +4,7 @@ use super::*;
 use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String};
 
 #[test]
-#[should_panic(expected = "metadata hash cannot be zero")]
+#[should_panic(expected = "Error(Contract, #4)")]
 fn test_post_commission_zero_hash_panics() {
     let env = Env::default();
     let commissioner = Address::generate(&env);
@@ -117,7 +117,7 @@ fn test_admin_handoff_propose_then_accept() {
 }
 
 #[test]
-#[should_panic(expected = "no admin proposal pending")]
+#[should_panic(expected = "Error(Contract, #3)")]
 fn test_accept_admin_without_proposal_panics() {
     let env = Env::default();
     env.mock_all_auths();
@@ -168,7 +168,7 @@ fn setup_commission(
 }
 
 #[test]
-#[should_panic(expected = "commission not found")]
+#[should_panic(expected = "Error(Contract, #7)")]
 fn test_renew_commission_ttl_unknown_id_panics() {
     let env = Env::default();
     let contract_id = env.register_contract(None, DataCommission);
@@ -229,7 +229,7 @@ fn test_raise_and_resolve_dispute_in_commissioners_favor_refunds() {
 }
 
 #[test]
-#[should_panic(expected = "only the commissioner can raise a dispute")]
+#[should_panic(expected = "Error(Contract, #18)")]
 fn test_raise_dispute_by_non_commissioner_panics() {
     let env = Env::default();
     let (client, _admin, _commissioner, _token, id) = setup_commission(&env);
@@ -239,7 +239,7 @@ fn test_raise_dispute_by_non_commissioner_panics() {
 }
 
 #[test]
-#[should_panic(expected = "commission not disputed")]
+#[should_panic(expected = "Error(Contract, #20)")]
 fn test_resolve_dispute_without_raising_panics() {
     let env = Env::default();
     let (client, _admin, _commissioner, _token, id) = setup_commission(&env);
@@ -252,7 +252,7 @@ fn test_resolve_dispute_without_raising_panics() {
 }
 
 #[test]
-#[should_panic(expected = "no arbiter set")]
+#[should_panic(expected = "Error(Contract, #19)")]
 fn test_resolve_dispute_without_arbiter_set_panics() {
     let env = Env::default();
     let (client, _admin, commissioner, _token, id) = setup_commission(&env);
@@ -302,7 +302,7 @@ fn test_set_milestones_and_release_pays_out_per_tranche() {
 }
 
 #[test]
-#[should_panic(expected = "milestone amounts must sum to the bounty amount")]
+#[should_panic(expected = "Error(Contract, #14)")]
 fn test_set_milestones_rejects_mismatched_total() {
     let env = Env::default();
     let (client, _admin, _commissioner, _token, id) = setup_commission(&env);
@@ -314,7 +314,7 @@ fn test_set_milestones_rejects_mismatched_total() {
 }
 
 #[test]
-#[should_panic(expected = "milestone already released")]
+#[should_panic(expected = "Error(Contract, #17)")]
 fn test_release_milestone_twice_panics() {
     let env = Env::default();
     let (client, _admin, _commissioner, _token, id) = setup_commission(&env);

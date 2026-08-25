@@ -267,40 +267,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "issue_license"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'insufficient license fee' from contract function 'Symbol(obj#23)'"
-                },
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                },
-                {
-                  "string": "ds_fee"
-                },
-                {
-                  "vec": [
-                    {
-                      "symbol": "Government"
-                    }
-                  ]
-                },
-                {
-                  "string": "GLOBAL"
-                },
-                {
-                  "u32": 1000
-                },
-                {
-                  "i128": {
-                    "hi": 0,
-                    "lo": 9999999
-                  }
-                }
-              ]
+              "error": {
+                "contract": 4
+              }
             }
           }
         }
@@ -320,12 +296,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 4
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -345,7 +321,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 4
                 }
               }
             ],
@@ -406,7 +382,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 4
                 }
               }
             ],

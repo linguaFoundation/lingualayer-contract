@@ -1342,84 +1342,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "set_milestones"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'milestone amounts must sum to the bounty amount' from contract function 'Symbol(obj#295)'"
-                },
-                {
-                  "string": "com_1"
-                },
-                {
-                  "vec": [
-                    {
-                      "map": [
-                        {
-                          "key": {
-                            "symbol": "amount"
-                          },
-                          "val": {
-                            "i128": {
-                              "hi": 0,
-                              "lo": 600
-                            }
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "description_hash"
-                          },
-                          "val": {
-                            "bytes": "0700000000000000000000000000000000000000000000000000000000000000"
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "released"
-                          },
-                          "val": {
-                            "bool": false
-                          }
-                        }
-                      ]
-                    },
-                    {
-                      "map": [
-                        {
-                          "key": {
-                            "symbol": "amount"
-                          },
-                          "val": {
-                            "i128": {
-                              "hi": 0,
-                              "lo": 300
-                            }
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "description_hash"
-                          },
-                          "val": {
-                            "bytes": "0700000000000000000000000000000000000000000000000000000000000000"
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "released"
-                          },
-                          "val": {
-                            "bool": false
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
+              "error": {
+                "contract": 14
+              }
             }
           }
         }
@@ -1439,12 +1371,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 14
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -1464,7 +1396,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 14
                 }
               }
             ],
@@ -1569,7 +1501,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 14
                 }
               }
             ],

@@ -92,7 +92,7 @@ fn test_renew_license_ttl_is_permissionless() {
 }
 
 #[test]
-#[should_panic(expected = "license not found")]
+#[should_panic(expected = "Error(Contract, #5)")]
 fn test_renew_license_ttl_unknown_id_panics() {
     let env = Env::default();
     let (router, _admin) = setup(&env);

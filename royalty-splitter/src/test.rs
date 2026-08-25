@@ -168,7 +168,7 @@ fn test_payout_record_is_persisted_with_ledger() {
 }
 
 #[test]
-#[should_panic(expected = "amount must be positive")]
+#[should_panic(expected = "Error(Contract, #6)")]
 fn test_zero_amount_distribute_panics() {
     let f = setup(1_000);
     let alice = Address::generate(&f.env);
@@ -178,7 +178,7 @@ fn test_zero_amount_distribute_panics() {
 }
 
 #[test]
-#[should_panic(expected = "amount must be positive")]
+#[should_panic(expected = "Error(Contract, #6)")]
 fn test_distribute_zero_amount() {
     let env = Env::default();
     env.mock_all_auths();
@@ -208,7 +208,7 @@ fn test_distribute_zero_amount() {
 }
 
 #[test]
-#[should_panic(expected = "amount must be positive")]
+#[should_panic(expected = "Error(Contract, #6)")]
 fn test_negative_amount_distribute_panics() {
     let f = setup(1_000);
     let alice = Address::generate(&f.env);
@@ -218,7 +218,7 @@ fn test_negative_amount_distribute_panics() {
 }
 
 #[test]
-#[should_panic(expected = "insufficient contract balance for distribution")]
+#[should_panic(expected = "Error(Contract, #7)")]
 fn test_distribute_beyond_balance_panics_before_transferring() {
     let f = setup(100);
     let alice = Address::generate(&f.env);

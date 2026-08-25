@@ -181,7 +181,7 @@ fn test_fuzz_score_aggregation_invariants_hold_across_random_sequence() {
 }
 
 #[test]
-#[should_panic(expected = "score must be 0-100")]
+#[should_panic(expected = "Error(Contract, #6)")]
 fn test_attest_quality_rejects_out_of_range_score() {
     let env = Env::default();
     let contract_id = env.register_contract(None, QualityOracle);
@@ -201,7 +201,7 @@ fn test_attest_quality_rejects_out_of_range_score() {
 }
 
 #[test]
-#[should_panic(expected = "curator not registered")]
+#[should_panic(expected = "Error(Contract, #5)")]
 fn test_attest_quality_rejects_unregistered_curator() {
     let env = Env::default();
     let contract_id = env.register_contract(None, QualityOracle);

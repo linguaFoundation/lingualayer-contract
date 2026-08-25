@@ -4042,27 +4042,16 @@
           "v0": {
             "topics": [
               {
-                "symbol": "log"
+                "symbol": "fn_return"
+              },
+              {
+                "symbol": "attest_quality"
               }
             ],
             "data": {
-              "vec": [
-                {
-                  "string": "caught panic 'curator is banned' from contract function 'Symbol(obj#963)'"
-                },
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
-                },
-                {
-                  "string": "ds_after_ban"
-                },
-                {
-                  "u32": 50
-                },
-                {
-                  "bytes": "0808080808080808080808080808080808080808080808080808080808080808"
-                }
-              ]
+              "error": {
+                "contract": 8
+              }
             }
           }
         }
@@ -4082,12 +4071,12 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 8
                 }
               }
             ],
             "data": {
-              "string": "caught error from function"
+              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
             }
           }
         }
@@ -4107,7 +4096,7 @@
               },
               {
                 "error": {
-                  "wasm_vm": "invalid_action"
+                  "contract": 8
                 }
               }
             ],
