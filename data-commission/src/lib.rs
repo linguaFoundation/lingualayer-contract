@@ -3,8 +3,8 @@
 extern crate alloc;
 use alloc::format;
 use soroban_sdk::{
-    contracterror,
-    contract, contractimpl, contracttype, symbol_short, token, Address, Env, String, Vec,
+    contract, contracterror, contractimpl, contracttype, symbol_short, token, Address, Env, String,
+    Vec,
 };
 
 /// A single tranche of a commission's bounty, released independently once
@@ -36,6 +36,12 @@ pub enum Error {
     OnlyCommissionerCanRaiseDispute = 18,
     NoArbiterSet = 19,
     CommissionNotDisputed = 20,
+    /// A state-mutating entry point was called while the contract is frozen.
+    ContractPaused = 21,
+    /// `pause` called on a contract that is already frozen.
+    AlreadyPaused = 22,
+    /// `unpause` called on a contract that is not frozen.
+    NotPaused = 23,
 }
 
 #[contracttype]
@@ -129,6 +135,81 @@ impl DataCommission {
         Ok(())
     }
 
+    /// Freeze every state-mutating entry point. Admin only.
+    ///
+    /// This is incident-response machinery: if a vulnerability is found before
+    /// or during testnet, the damage window is however long it takes to get a
+    /// transaction through, not however long it takes to ship a fix.
+    ///
+    /// Reads stay available while paused, deliberately. Integrators and the
+    /// front end need to keep answering questions about existing state during
+    /// an incident, and a read cannot make the problem worse.
+    pub fn pause(env: Env) -> Result<(), Error> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .ok_or(Error::NotInitialized)?;
+        admin.require_auth();
+
+        if Self::is_paused(env.clone()) {
+            return Err(Error::AlreadyPaused);
+        }
+        env.storage()
+            .instance()
+            .set(&symbol_short!("paused"), &true);
+
+        env.events().publish(
+            (symbol_short!("pause"), symbol_short!("paused")),
+            (admin, env.ledger().timestamp()),
+        );
+        Ok(())
+    }
+
+    /// Lift the freeze. Admin only.
+    pub fn unpause(env: Env) -> Result<(), Error> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .ok_or(Error::NotInitialized)?;
+        admin.require_auth();
+
+        if !Self::is_paused(env.clone()) {
+            return Err(Error::NotPaused);
+        }
+        env.storage()
+            .instance()
+            .set(&symbol_short!("paused"), &false);
+
+        env.events().publish(
+            (symbol_short!("pause"), symbol_short!("unpaused")),
+            (admin, env.ledger().timestamp()),
+        );
+        Ok(())
+    }
+
+    /// Whether writes are currently frozen. A read, so it answers while paused.
+    pub fn is_paused(env: Env) -> bool {
+        env.storage()
+            .instance()
+            .get(&symbol_short!("paused"))
+            .unwrap_or(false)
+    }
+
+    /// Reject a state-mutating call while the contract is frozen.
+    ///
+    /// Checked before authorization on purpose: a paused contract rejects the
+    /// call whoever is making it, so there is no reason to do the more
+    /// expensive auth work first, and no signature is consumed by a call that
+    /// was never going to land.
+    fn require_not_paused(env: &Env) -> Result<(), Error> {
+        if Self::is_paused(env.clone()) {
+            return Err(Error::ContractPaused);
+        }
+        Ok(())
+    }
+
     /// Post a new data commission with USDC bounty.
     pub fn post_commission(
         env: Env,
@@ -141,6 +222,7 @@ impl DataCommission {
         min_duration_seconds: u32,
         deadline_ledger: u32,
     ) -> Result<String, Error> {
+        Self::require_not_paused(&env)?;
         commissioner.require_auth();
 
         if description_hash == soroban_sdk::BytesN::from_array(&env, &[0u8; 32]) {
@@ -208,6 +290,7 @@ impl DataCommission {
         fulfiller: Address,
         dataset_id: String,
     ) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let admin: Address = env
             .storage()
             .instance()
@@ -257,6 +340,7 @@ impl DataCommission {
 
     /// Cancel an expired commission and refund the commissioner.
     pub fn cancel_commission(env: Env, commission_id: String) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let mut comm: Commission = env
             .storage()
             .persistent()
@@ -304,7 +388,12 @@ impl DataCommission {
     /// Split a commission's bounty into independently-released tranches.
     /// Must be called before fulfil_commission — once a fulfiller is
     /// assigned, the milestone set for that commission is locked in.
-    pub fn set_milestones(env: Env, commission_id: String, milestones: Vec<Milestone>) -> Result<(), Error> {
+    pub fn set_milestones(
+        env: Env,
+        commission_id: String,
+        milestones: Vec<Milestone>,
+    ) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let mut comm: Commission = env
             .storage()
             .persistent()
@@ -349,7 +438,12 @@ impl DataCommission {
     /// that the off-chain deliverable for this tranche was actually
     /// verified. The final milestone's release also marks the commission
     /// Fulfilled.
-    pub fn release_milestone(env: Env, commission_id: String, milestone_index: u32) -> Result<(), Error> {
+    pub fn release_milestone(
+        env: Env,
+        commission_id: String,
+        milestone_index: u32,
+    ) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let admin: Address = env
             .storage()
             .instance()
@@ -445,7 +539,8 @@ impl DataCommission {
             .get(&symbol_short!("admin"))
             .expect("not initialized");
         admin.require_auth();
-        env.deployer().update_current_contract_wasm(new_wasm_hash.clone());
+        env.deployer()
+            .update_current_contract_wasm(new_wasm_hash.clone());
         env.events().publish(
             (symbol_short!("contract"), symbol_short!("upgraded")),
             (new_wasm_hash, env.ledger().sequence()),
@@ -455,6 +550,7 @@ impl DataCommission {
     /// Designate the address that can rule on disputed commissions.
     /// Admin-gated; callable again to rotate the arbiter.
     pub fn set_arbiter(env: Env, arbiter: Address) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let admin: Address = env
             .storage()
             .instance()
@@ -476,6 +572,7 @@ impl DataCommission {
     /// Only valid while Open (before the admin has released any funds);
     /// freezes the commission until the arbiter rules on it.
     pub fn raise_dispute(env: Env, commission_id: String, raised_by: Address) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         raised_by.require_auth();
 
         let mut comm: Commission = env
@@ -512,6 +609,7 @@ impl DataCommission {
         fulfiller: Address,
         dataset_id: String,
     ) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let arbiter: Address = env
             .storage()
             .instance()
@@ -560,3 +658,6 @@ impl DataCommission {
 
 #[cfg(test)]
 mod test;
+
+#[cfg(test)]
+mod pause_test;

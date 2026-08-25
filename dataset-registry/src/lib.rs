@@ -2,7 +2,9 @@
 #![allow(clippy::too_many_arguments)]
 extern crate alloc;
 use alloc::format;
-use soroban_sdk::{contract, contractimpl, contracttype, contracterror, symbol_short, Address, Env, String, Vec};
+use soroban_sdk::{
+    contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env, String, Vec,
+};
 
 /// How long persistent entries live before they can be archived:
 /// 7,776,000 ledgers ≈ 90 days at ~1s/ledger.
@@ -10,7 +12,6 @@ const PERSISTENT_TTL: u32 = 7_776_000;
 
 /// Total contributor shares must add up to this, in basis points.
 const TOTAL_BPS: u32 = 10_000;
-
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -34,6 +35,12 @@ pub enum Error {
     OnlyADatasetUnderReviewCanBeReinstated = 16,
     OnlyTheDatasetOwnerOrAdminCanDeprecate = 17,
     DatasetIsAlreadyDeprecated = 18,
+    /// A state-mutating entry point was called while the contract is frozen.
+    ContractPaused = 19,
+    /// `pause` called on a contract that is already frozen.
+    AlreadyPaused = 20,
+    /// `unpause` called on a contract that is not frozen.
+    NotPaused = 21,
 }
 
 #[contracttype]
@@ -147,6 +154,81 @@ impl DatasetRegistry {
         Ok(())
     }
 
+    /// Freeze every state-mutating entry point. Admin only.
+    ///
+    /// This is incident-response machinery: if a vulnerability is found before
+    /// or during testnet, the damage window is however long it takes to get a
+    /// transaction through, not however long it takes to ship a fix.
+    ///
+    /// Reads stay available while paused, deliberately. Integrators and the
+    /// front end need to keep answering questions about existing state during
+    /// an incident, and a read cannot make the problem worse.
+    pub fn pause(env: Env) -> Result<(), Error> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .ok_or(Error::NotInitialized)?;
+        admin.require_auth();
+
+        if Self::is_paused(env.clone()) {
+            return Err(Error::AlreadyPaused);
+        }
+        env.storage()
+            .instance()
+            .set(&symbol_short!("paused"), &true);
+
+        env.events().publish(
+            (symbol_short!("pause"), symbol_short!("paused")),
+            (admin, env.ledger().timestamp()),
+        );
+        Ok(())
+    }
+
+    /// Lift the freeze. Admin only.
+    pub fn unpause(env: Env) -> Result<(), Error> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .ok_or(Error::NotInitialized)?;
+        admin.require_auth();
+
+        if !Self::is_paused(env.clone()) {
+            return Err(Error::NotPaused);
+        }
+        env.storage()
+            .instance()
+            .set(&symbol_short!("paused"), &false);
+
+        env.events().publish(
+            (symbol_short!("pause"), symbol_short!("unpaused")),
+            (admin, env.ledger().timestamp()),
+        );
+        Ok(())
+    }
+
+    /// Whether writes are currently frozen. A read, so it answers while paused.
+    pub fn is_paused(env: Env) -> bool {
+        env.storage()
+            .instance()
+            .get(&symbol_short!("paused"))
+            .unwrap_or(false)
+    }
+
+    /// Reject a state-mutating call while the contract is frozen.
+    ///
+    /// Checked before authorization on purpose: a paused contract rejects the
+    /// call whoever is making it, so there is no reason to do the more
+    /// expensive auth work first, and no signature is consumed by a call that
+    /// was never going to land.
+    fn require_not_paused(env: &Env) -> Result<(), Error> {
+        if Self::is_paused(env.clone()) {
+            return Err(Error::ContractPaused);
+        }
+        Ok(())
+    }
+
     /// Read the configured admin, panicking if the contract was never
     /// initialized. Every admin-gated entry point goes through here so an
     /// uninitialized contract fails with one consistent message instead of
@@ -169,6 +251,7 @@ impl DatasetRegistry {
         duration_seconds: u32,
         commission_id: Option<String>,
     ) -> Result<String, Error> {
+        Self::require_not_paused(&env)?;
         owner.require_auth();
 
         // Registration is admin-gated at the contract level only in the sense
@@ -330,7 +413,12 @@ impl DatasetRegistry {
         Ok(Self::load(&env, &dataset_id)?.state)
     }
 
-    pub fn update_metadata(env: Env, dataset_id: String, new_hash: soroban_sdk::BytesN<32>) -> Result<(), Error> {
+    pub fn update_metadata(
+        env: Env,
+        dataset_id: String,
+        new_hash: soroban_sdk::BytesN<32>,
+    ) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let mut ds = Self::load(&env, &dataset_id)?;
         ds.owner.require_auth();
 
@@ -375,10 +463,10 @@ impl DatasetRegistry {
         Ok(())
     }
 
-
     /// Admin flags an Active dataset for review — a reversible hold that
     /// freezes metadata updates without permanently retiring the record.
     pub fn flag_dataset(env: Env, dataset_id: String) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let admin = Self::admin(&env)?;
         admin.require_auth();
 
@@ -398,6 +486,7 @@ impl DatasetRegistry {
 
     /// Admin clears a review, returning the dataset to Active.
     pub fn reinstate_dataset(env: Env, dataset_id: String) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let admin = Self::admin(&env)?;
         admin.require_auth();
 
@@ -421,6 +510,7 @@ impl DatasetRegistry {
     /// acting as and that identity both signs and is checked against the two
     /// permitted roles.
     pub fn deprecate_dataset(env: Env, dataset_id: String, caller: Address) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         caller.require_auth();
 
         let mut ds = Self::load(&env, &dataset_id)?;
@@ -530,7 +620,8 @@ impl DatasetRegistry {
     pub fn upgrade(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
         let admin = Self::admin(&env).expect("not initialized");
         admin.require_auth();
-        env.deployer().update_current_contract_wasm(new_wasm_hash.clone());
+        env.deployer()
+            .update_current_contract_wasm(new_wasm_hash.clone());
         env.events().publish(
             (symbol_short!("contract"), symbol_short!("upgraded")),
             (new_wasm_hash, env.ledger().sequence()),
@@ -540,6 +631,9 @@ impl DatasetRegistry {
 
 #[cfg(test)]
 mod test;
+
+#[cfg(test)]
+mod pause_test;
 
 #[cfg(test)]
 mod ttl_test;

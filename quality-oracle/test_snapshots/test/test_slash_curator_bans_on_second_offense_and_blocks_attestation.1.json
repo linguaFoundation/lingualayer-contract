@@ -495,6 +495,14 @@
                     },
                     {
                       "key": {
+                        "symbol": "needs_more_attestations"
+                      },
+                      "val": {
+                        "bool": false
+                      }
+                    },
+                    {
+                      "key": {
                         "symbol": "tier"
                       },
                       "val": {
@@ -567,6 +575,14 @@
                       },
                       "val": {
                         "u32": 0
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "needs_more_attestations"
+                      },
+                      "val": {
+                        "bool": false
                       }
                     },
                     {
@@ -2502,7 +2518,7 @@
                 {
                   "vec": [
                     {
-                      "symbol": "Silver"
+                      "symbol": "Unrated"
                     }
                   ]
                 }
@@ -2672,7 +2688,7 @@
                 {
                   "vec": [
                     {
-                      "symbol": "Silver"
+                      "symbol": "Unrated"
                     }
                   ]
                 }
@@ -3352,7 +3368,7 @@
                 {
                   "vec": [
                     {
-                      "symbol": "Silver"
+                      "symbol": "Unrated"
                     }
                   ]
                 }
@@ -3522,7 +3538,7 @@
                 {
                   "vec": [
                     {
-                      "symbol": "Silver"
+                      "symbol": "Unrated"
                     }
                   ]
                 }

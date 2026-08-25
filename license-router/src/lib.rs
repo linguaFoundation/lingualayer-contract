@@ -2,8 +2,8 @@
 extern crate alloc;
 use alloc::format;
 use soroban_sdk::{
-    contracterror,
-    contract, contractclient, contractimpl, contracttype, symbol_short, Address, Env, String,
+    contract, contractclient, contracterror, contractimpl, contracttype, symbol_short, Address,
+    Env, String,
 };
 
 /// Default royalty multiplier (1x, in bps) used when no oracle is
@@ -30,6 +30,12 @@ pub enum Error {
     NoAdminProposalPending = 3,
     InsufficientLicenseFee = 4,
     LicenseNotFound = 5,
+    /// A state-mutating entry point was called while the contract is frozen.
+    ContractPaused = 6,
+    /// `pause` called on a contract that is already frozen.
+    AlreadyPaused = 7,
+    /// `unpause` called on a contract that is not frozen.
+    NotPaused = 8,
 }
 
 #[contractclient(name = "QualityOracleClient")]
@@ -125,6 +131,81 @@ impl LicenseRouter {
         Ok(())
     }
 
+    /// Freeze every state-mutating entry point. Admin only.
+    ///
+    /// This is incident-response machinery: if a vulnerability is found before
+    /// or during testnet, the damage window is however long it takes to get a
+    /// transaction through, not however long it takes to ship a fix.
+    ///
+    /// Reads stay available while paused, deliberately. Integrators and the
+    /// front end need to keep answering questions about existing state during
+    /// an incident, and a read cannot make the problem worse.
+    pub fn pause(env: Env) -> Result<(), Error> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .ok_or(Error::NotInitialized)?;
+        admin.require_auth();
+
+        if Self::is_paused(env.clone()) {
+            return Err(Error::AlreadyPaused);
+        }
+        env.storage()
+            .instance()
+            .set(&symbol_short!("paused"), &true);
+
+        env.events().publish(
+            (symbol_short!("pause"), symbol_short!("paused")),
+            (admin, env.ledger().timestamp()),
+        );
+        Ok(())
+    }
+
+    /// Lift the freeze. Admin only.
+    pub fn unpause(env: Env) -> Result<(), Error> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .ok_or(Error::NotInitialized)?;
+        admin.require_auth();
+
+        if !Self::is_paused(env.clone()) {
+            return Err(Error::NotPaused);
+        }
+        env.storage()
+            .instance()
+            .set(&symbol_short!("paused"), &false);
+
+        env.events().publish(
+            (symbol_short!("pause"), symbol_short!("unpaused")),
+            (admin, env.ledger().timestamp()),
+        );
+        Ok(())
+    }
+
+    /// Whether writes are currently frozen. A read, so it answers while paused.
+    pub fn is_paused(env: Env) -> bool {
+        env.storage()
+            .instance()
+            .get(&symbol_short!("paused"))
+            .unwrap_or(false)
+    }
+
+    /// Reject a state-mutating call while the contract is frozen.
+    ///
+    /// Checked before authorization on purpose: a paused contract rejects the
+    /// call whoever is making it, so there is no reason to do the more
+    /// expensive auth work first, and no signature is consumed by a call that
+    /// was never going to land.
+    fn require_not_paused(env: &Env) -> Result<(), Error> {
+        if Self::is_paused(env.clone()) {
+            return Err(Error::ContractPaused);
+        }
+        Ok(())
+    }
+
     /// Issue a new license for a dataset. Caller pays fee_paid_stroops.
     pub fn issue_license(
         env: Env,
@@ -135,6 +216,7 @@ impl LicenseRouter {
         duration_ledgers: u32,
         fee_paid_stroops: i128,
     ) -> Result<String, Error> {
+        Self::require_not_paused(&env)?;
         licensee.require_auth();
         Self::bump_instance(&env);
 
@@ -214,6 +296,7 @@ impl LicenseRouter {
 
     /// Revoke a license (admin only).
     pub fn revoke_license(env: Env, license_id: String) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         Self::bump_instance(&env);
         let admin: Address = env
             .storage()
@@ -265,6 +348,7 @@ impl LicenseRouter {
     /// Configure (or update) the QualityOracle contract used to look up
     /// each dataset's royalty multiplier in `issue_license`. Admin only.
     pub fn set_oracle(env: Env, oracle_contract: Address) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         let admin: Address = env
             .storage()
             .instance()
@@ -319,7 +403,8 @@ impl LicenseRouter {
             .get(&symbol_short!("admin"))
             .expect("not initialized");
         admin.require_auth();
-        env.deployer().update_current_contract_wasm(new_wasm_hash.clone());
+        env.deployer()
+            .update_current_contract_wasm(new_wasm_hash.clone());
         env.events().publish(
             (symbol_short!("contract"), symbol_short!("upgraded")),
             (new_wasm_hash, env.ledger().sequence()),
@@ -329,6 +414,9 @@ impl LicenseRouter {
 
 #[cfg(test)]
 mod test;
+
+#[cfg(test)]
+mod pause_test;
 
 #[cfg(test)]
 mod ttl_test;

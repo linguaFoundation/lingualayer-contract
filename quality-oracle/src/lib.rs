@@ -1,7 +1,9 @@
 #![no_std]
 extern crate alloc;
 use alloc::format;
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env, String, Vec};
+use soroban_sdk::{
+    contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env, String, Vec,
+};
 
 /// Maximum quality score (100 points)
 const MAX_SCORE: u32 = 100;
@@ -22,7 +24,6 @@ const TOTAL_BPS: i128 = 10_000;
 /// collusion rather than a single account.
 const MIN_ATTESTATIONS: u32 = 3;
 
-
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
@@ -35,6 +36,12 @@ pub enum Error {
     ScoreOutOfRange = 6,
     NoQualityDataForDataset = 7,
     CuratorBanned = 8,
+    /// A state-mutating entry point was called while the contract is frozen.
+    ContractPaused = 9,
+    /// `pause` called on a contract that is already frozen.
+    AlreadyPaused = 10,
+    /// `unpause` called on a contract that is not frozen.
+    NotPaused = 11,
 }
 
 #[contracttype]
@@ -143,8 +150,84 @@ impl QualityOracle {
         Ok(())
     }
 
+    /// Freeze every state-mutating entry point. Admin only.
+    ///
+    /// This is incident-response machinery: if a vulnerability is found before
+    /// or during testnet, the damage window is however long it takes to get a
+    /// transaction through, not however long it takes to ship a fix.
+    ///
+    /// Reads stay available while paused, deliberately. Integrators and the
+    /// front end need to keep answering questions about existing state during
+    /// an incident, and a read cannot make the problem worse.
+    pub fn pause(env: Env) -> Result<(), Error> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .ok_or(Error::NotInitialized)?;
+        admin.require_auth();
+
+        if Self::is_paused(env.clone()) {
+            return Err(Error::AlreadyPaused);
+        }
+        env.storage()
+            .instance()
+            .set(&symbol_short!("paused"), &true);
+
+        env.events().publish(
+            (symbol_short!("pause"), symbol_short!("paused")),
+            (admin, env.ledger().timestamp()),
+        );
+        Ok(())
+    }
+
+    /// Lift the freeze. Admin only.
+    pub fn unpause(env: Env) -> Result<(), Error> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .ok_or(Error::NotInitialized)?;
+        admin.require_auth();
+
+        if !Self::is_paused(env.clone()) {
+            return Err(Error::NotPaused);
+        }
+        env.storage()
+            .instance()
+            .set(&symbol_short!("paused"), &false);
+
+        env.events().publish(
+            (symbol_short!("pause"), symbol_short!("unpaused")),
+            (admin, env.ledger().timestamp()),
+        );
+        Ok(())
+    }
+
+    /// Whether writes are currently frozen. A read, so it answers while paused.
+    pub fn is_paused(env: Env) -> bool {
+        env.storage()
+            .instance()
+            .get(&symbol_short!("paused"))
+            .unwrap_or(false)
+    }
+
+    /// Reject a state-mutating call while the contract is frozen.
+    ///
+    /// Checked before authorization on purpose: a paused contract rejects the
+    /// call whoever is making it, so there is no reason to do the more
+    /// expensive auth work first, and no signature is consumed by a call that
+    /// was never going to land.
+    fn require_not_paused(env: &Env) -> Result<(), Error> {
+        if Self::is_paused(env.clone()) {
+            return Err(Error::ContractPaused);
+        }
+        Ok(())
+    }
+
     /// Register a curator by staking XLM. Stakers can be slashed for bad scores.
     pub fn register_curator(env: Env, curator: Address) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         curator.require_auth();
         let key = Self::curator_key(&env, &curator);
         if env.storage().persistent().has(&key) {
@@ -181,6 +264,7 @@ impl QualityOracle {
         score: u32,
         rubric_hash: soroban_sdk::BytesN<32>,
     ) -> Result<(), Error> {
+        Self::require_not_paused(&env)?;
         curator.require_auth();
 
         // Validate curator is registered and in good standing
@@ -270,7 +354,7 @@ impl QualityOracle {
             .storage()
             .persistent()
             .get(&agg_key)
-            .expect("no quality data for dataset");
+            .ok_or(Error::NoQualityDataForDataset)?;
 
         // Recomputed on read rather than trusted from storage. An aggregate
         // written before the threshold existed carries a tier that was never
@@ -278,13 +362,12 @@ impl QualityOracle {
         // be corrected without a migration.
         quality.tier = Self::compute_tier(quality.average_score, quality.attestation_count);
         quality.needs_more_attestations = quality.attestation_count < MIN_ATTESTATIONS;
-        quality
+        Ok(quality)
     }
 
     /// How many independent attestations a dataset needs before it is rated.
     pub fn min_attestations(_env: Env) -> u32 {
         MIN_ATTESTATIONS
-            .ok_or(Error::NoQualityDataForDataset)?
     }
 
     /// Get a curator's stake and standing.
@@ -313,6 +396,12 @@ impl QualityOracle {
     /// slash burns 20% of the curator's remaining stake to the protocol
     /// treasury balance.
     pub fn slash_curator(env: Env, curator: Address, dataset_id: String) {
+        // This one still returns `()` and signals failure by panicking, so the
+        // pause check follows the same convention rather than introducing a
+        // second error style inside one function.
+        if Self::is_paused(env.clone()) {
+            panic!("contract paused");
+        }
         let admin: Address = env
             .storage()
             .instance()
@@ -466,7 +555,8 @@ impl QualityOracle {
             .get(&symbol_short!("admin"))
             .expect("not initialized");
         admin.require_auth();
-        env.deployer().update_current_contract_wasm(new_wasm_hash.clone());
+        env.deployer()
+            .update_current_contract_wasm(new_wasm_hash.clone());
         env.events().publish(
             (symbol_short!("contract"), symbol_short!("upgraded")),
             (new_wasm_hash, env.ledger().sequence()),
@@ -476,3 +566,6 @@ impl QualityOracle {
 
 #[cfg(test)]
 mod test;
+
+#[cfg(test)]
+mod pause_test;
